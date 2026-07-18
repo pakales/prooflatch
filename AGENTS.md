@@ -92,11 +92,16 @@ request handling, hashing, model prompts, persistence, or deployment settings.
 - `lib/release-policies.ts` — server-owned policy profiles and exact check sets
 - `lib/prooflatch-schema.ts` — strict evidence and model schemas
 - `lib/prooflatch.ts` — deterministic evaluator, digest, and fallback
+- `lib/prooflatch-artifacts.ts` — shared deterministic receipt and repair brief
 - `lib/sample-evidence.ts` — bundled blocked and ready fixtures
 - `lib/quota.ts` — pseudonymous persistent model-usage quota
 - `bin/prooflatch-scan.mjs` — read-only repository baseline packet generator
+- `lib/safe-process-env.mjs` — explicit scanner subprocess environment allowlist
+- `action.yml` and `action/src/` — public JavaScript Action contract and source
+- `action/dist/` — committed generated Action bundle; never edit by hand
 - `db/schema.ts` — persistent quota schema
 - `examples/evidence/` — importable JSON fixtures
+- `examples/github/` — inactive consumer workflow examples
 - `tests/` — deterministic, API, rendering, and contract tests
 - `docs/` — architecture, testing, security, demo, and submission package
 - `.openai/hosting.json` — OpenAI Sites resource declarations
@@ -107,6 +112,9 @@ request handling, hashing, model prompts, persistence, or deployment settings.
 - Prefer the smallest robust change and existing repository patterns.
 - Keep the evaluator pure and independently testable.
 - Keep model prose outside the receipt's deterministic truth fields.
+- Keep the GitHub Action token-free and limited to the structural
+  `repository-baseline@1.0.0` profile.
+- Rebuild `action/dist/` through `npm run build:action`; never hand-edit it.
 - Use exact explicit model identifiers in runtime code.
 - Do not render model output as raw HTML.
 - Do not add repository command execution, hooks, shell interpolation, or

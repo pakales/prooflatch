@@ -12,6 +12,9 @@ allowed to change the verdict.
 
 ProofLatch is an OpenAI Build Week entry in the **Developer Tools** track.
 
+- **Live app:** [prooflatch-buildweek.e-vigelis.chatgpt.site](https://prooflatch-buildweek.e-vigelis.chatgpt.site)
+- **Source:** [github.com/pakales/prooflatch](https://github.com/pakales/prooflatch)
+
 ## Why this exists
 
 Agentic coding makes it easy to produce changes quickly, but “the agent says it
@@ -186,10 +189,20 @@ package scripts, tests, Git hooks, or network operations:
 npm run scan -- --root /path/to/repository --pretty > prooflatch-evidence.json
 ```
 
+Use `--require-root` when the supplied path must itself be the Git top-level,
+rather than a nested directory within a parent worktree. The GitHub Action
+always enables this boundary.
+
 It checks a pinned Git HEAD, dirty/conflict state, repository-bound metadata,
 sensitive-looking filenames, manifest, lockfile, and structural test/CI/README
 signals. It does not read arbitrary source contents and does not claim tests
 passed.
+
+The v1 scanner deliberately blocks Git submodule/gitlink entries instead of
+entering nested repositories whose source state is not covered by the parent
+commit. It uses a validated absolute system Git executable from the standard
+GitHub-hosted runner locations; a nonstandard Git installation is
+`indeterminate`, not `READY`.
 
 Exit codes are:
 
@@ -204,6 +217,54 @@ Exit codes are:
 
 The emitted packet uses `repository-baseline@1.0.0` and can be imported into the
 web app.
+
+## Automate the repository baseline in GitHub
+
+The repository also contains the source and committed bundle for a token-free
+Node 24 JavaScript Action. It runs the same read-only scanner, validates the
+complete packet against the server-owned policy, evaluates it deterministically,
+and writes a packet, receipt, and BLOCKED-only Codex brief under `RUNNER_TEMP`.
+
+In a consumer workflow, one non-matrix job named exactly `ProofLatch` becomes
+the GitHub Check that can be required by a branch ruleset:
+
+```yaml
+permissions:
+  contents: read
+
+jobs:
+  prooflatch:
+    name: ProofLatch
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: pakales/prooflatch@v1
+        with:
+          path: .
+          target: Pull request repository baseline
+```
+
+For production, replace `@v1` with the immutable release commit SHA published
+in the [v1.0.0 release](https://github.com/pakales/prooflatch/releases/tag/v1.0.0).
+The moving major tag is provided as a convenient compatibility alias.
+
+The Action does not use a GitHub token, call OpenAI, access the ProofLatch web
+API, execute project commands, or accept a `fail-on-blocked` bypass. `BLOCKED`
+always fails the job after outputs and local artifact paths have been written.
+Its `path` must identify the actual Git worktree root; a nested parent worktree
+is rejected as indeterminate.
+
+Important: `READY` from this Action means
+`repository-baseline@1.0.0` passed. It proves structural source-state signals,
+not that tests, a build, an audit, or a browser flow executed. See the complete
+[GitHub Action contract](docs/GITHUB-ACTION.md) and
+[consumer workflow](examples/github/prooflatch.yml).
+
+The public Action slug is `pakales/prooflatch@v1`. Release tags and the exact
+immutable commit are published on
+[GitHub Releases](https://github.com/pakales/prooflatch/releases).
 
 ## GPT-5.6 integration
 
@@ -252,8 +313,10 @@ Run the release checks from a clean checkout:
 npm run verify
 ```
 
-`verify` runs type-checking, lint, deterministic and scanner tests, a production
-build plus rendered-worker checks, and the production dependency audit.
+`verify` first confirms the committed Action bundle matches its TypeScript
+source, then runs type-checking, lint, deterministic, scanner, Action and API
+tests, a production build plus rendered-worker checks, and the production
+dependency audit.
 
 Then perform the blocked-to-ready browser flow at desktop and mobile widths and
 inspect browser console errors. The detailed matrix and expected results are in

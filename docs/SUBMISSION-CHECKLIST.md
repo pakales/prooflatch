@@ -46,7 +46,8 @@ placeholder remains.
 
 ## 3. Validation on the submitted commit
 
-Record the exact commit: `TODO_SUBMITTED_COMMIT`
+Record the exact Devpost-submitted commit here after final approval. Until then,
+the GitHub release tag is the public source baseline.
 
 - [ ] `npm run verify`
 - [ ] Type check and lint stages pass.
@@ -66,8 +67,8 @@ Attach final evidence to the table in [`TESTING.md`](TESTING.md).
 
 ## 4. Repository
 
-- [ ] Repository URL: `TODO_PUBLIC_REPOSITORY_URL`
-- [ ] Submitted source state is pushed and matches `TODO_SUBMITTED_COMMIT`.
+- [ ] Repository URL: `https://github.com/pakales/prooflatch`
+- [ ] Submitted source state is pushed and matches the recorded Devpost commit.
 - [ ] Default branch builds from a clean clone.
 - [ ] Repository is public with the MIT `LICENSE`.
 - [ ] If kept private instead, both required judging accounts have access:
@@ -82,7 +83,7 @@ Attach final evidence to the table in [`TESTING.md`](TESTING.md).
 
 ## 5. Deployment and judge access
 
-- [ ] Live app URL: `TODO_DEPLOYED_APP_URL`
+- [ ] Live app URL: `https://prooflatch-buildweek.e-vigelis.chatgpt.site`
 - [ ] Deployment uses the same submitted commit.
 - [ ] Deployment status is healthy and stable.
 - [ ] Judge sign-in path completes in a signed-out browser.
@@ -94,7 +95,7 @@ Attach final evidence to the table in [`TESTING.md`](TESTING.md).
 
 ## 6. Demo video
 
-- [ ] Public YouTube URL: `TODO_PUBLIC_YOUTUBE_URL`
+- [ ] Public YouTube URL is recorded here after the final public upload.
 - [ ] Runtime is 2:50 or shorter.
 - [ ] Audio is clear and continuous.
 - [ ] Both Codex and GPT-5.6 usage are explained.
@@ -119,7 +120,8 @@ Use [`DEMO-SCRIPT.md`](DEMO-SCRIPT.md) as the recording source of truth.
 - [ ] Existing-project question is answered truthfully; this entry's submitted
       work and event-period implementation are evident in commit history.
 - [ ] Required team, eligibility, terms, and event fields are complete.
-- [ ] Final preview has no Markdown formatting damage or `TODO_*` placeholders.
+- [ ] Final preview has no Markdown formatting damage or unresolved
+      placeholders.
 - [ ] Submission confirmation is captured.
 
 ## 8. Placeholder sweep
@@ -127,7 +129,7 @@ Use [`DEMO-SCRIPT.md`](DEMO-SCRIPT.md) as the recording source of truth.
 Run:
 
 ```bash
-rg -n 'TODO_[A-Z0-9_]+' README.md docs
+rg -n 'TO''DO_[A-Z0-9_]+|REPLACE''_WITH_' README.md docs examples
 ```
 
 Expected result before submission: no matches.

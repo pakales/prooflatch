@@ -18,11 +18,11 @@ npm ci
 npm run verify
 ```
 
-`verify` runs the type check, lint, unit suites, production build,
-rendered-worker tests, and production dependency audit. A submission build is
-not ready if any stage is skipped or fails. Record any intentionally deferred
-development-only audit finding separately; never hide a production dependency
-advisory.
+`verify` checks that the committed Action bundle matches its source, then runs
+the type check, lint, unit suites, production build, rendered-worker tests, and
+production dependency audit. A submission build is not ready if any stage is
+skipped or fails. Record any intentionally deferred development-only audit
+finding separately; never hide a production dependency advisory.
 
 ## Deterministic evaluator matrix
 
@@ -137,11 +137,48 @@ Run `npm run test:scanner`. The scanner suite verifies:
 - sensitive-looking filename redaction;
 - external or ambiguous metadata symlink rejection;
 - project scripts, hooks, and fsmonitor traps are not executed;
+- repository content filters are detected before `git status` can invoke them;
+- inherited process secrets and Git/Node injection variables are excluded;
+- a fake `git` prepended to `PATH` is never executed;
+- Git submodule/gitlink entries are blocked without entering the nested repo;
 - source, commit-message, and remote-credential canaries do not enter output;
 - malformed CLI options return usage exit code `64`.
 
 The scanner proves repository structure and source state only. A discovered test
 or CI signal is not test-execution evidence.
+
+## GitHub Action contract
+
+Run the Action checks independently with:
+
+```bash
+npm run build:action
+npm run check:action-bundle
+npm run test:action
+```
+
+The Action suite must cover:
+
+| Case | Expected GitHub step result |
+| --- | --- |
+| Clean baseline with all required checks passing | Success and `READY` output |
+| Advisory CI or README warning | Success and `READY` output with warning IDs |
+| Dirty checkout or another required failure | Failure after `BLOCKED` outputs are written |
+| Scanner indeterminate or malformed output | Failure with no readiness claim |
+| Packet commit differs from `GITHUB_SHA` | Failure |
+| Input path escapes `GITHUB_WORKSPACE` | Failure before scanning |
+| Input path traverses a symlink | Failure before scanning |
+| Selected path resolves to a parent Git worktree | Indeterminate without inspecting the parent |
+| Action receives secret or Git/Node injection environment variables | Scanner subprocess does not inherit them |
+| Repository config defines an executable content filter | Scanner stops before filter execution |
+| READY run | Evidence and receipt paths exist; repair-brief path is empty |
+| BLOCKED run | Evidence, receipt, and bounded repair-brief paths exist |
+| Rebuilt bundle differs from committed `action/dist` | Bundle check fails |
+
+Also assert that public outputs are limited to verdict, scanner state, digest,
+policy, commit, blocker/warning IDs, and artifact paths; the Action must not
+accept or require an OpenAI token. The workflow job named `ProofLatch` is the
+GitHub Check. The Action must not call the Checks API or Commit Status API.
 
 ## Local API smoke
 

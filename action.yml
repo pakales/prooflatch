@@ -1,0 +1,46 @@
+name: ProofLatch Repository Baseline
+description: Produce a deterministic, read-only repository baseline receipt without running project tests or builds.
+author: Evl Labs
+
+inputs:
+  path:
+    description: Relative Git worktree root inside GITHUB_WORKSPACE.
+    required: false
+    default: "."
+  target:
+    description: Human-readable target recorded in the evidence packet.
+    required: false
+    default: Pull request repository baseline
+  release-version:
+    description: Optional release version override recorded in the evidence packet.
+    required: false
+
+outputs:
+  verdict:
+    description: Deterministic READY or BLOCKED verdict.
+  scanner-state:
+    description: Scanner state: ready, review, blocked, or indeterminate.
+  evidence-digest:
+    description: Full SHA-256 digest of the effective policy, evidence, evaluator, and assessment.
+  policy:
+    description: Effective repository-baseline policy identifier and version.
+  commit:
+    description: Full commit identifier captured by the scanner.
+  blocking-check-ids:
+    description: JSON array of authoritative blocking check IDs.
+  warning-check-ids:
+    description: JSON array of authoritative advisory warning check IDs.
+  evidence-path:
+    description: Absolute path to the persisted evidence packet.
+  receipt-path:
+    description: Absolute path to the persisted ProofLatch receipt.
+  repair-brief-path:
+    description: Absolute path to the BLOCKED-only Codex repair brief, or an empty string.
+
+runs:
+  using: node24
+  main: action/dist/index.mjs
+
+branding:
+  icon: shield
+  color: purple

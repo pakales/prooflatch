@@ -4,7 +4,8 @@
 
 This document covers the ProofLatch web application, its evidence import and
 analysis API, Sign in with ChatGPT identity, D1 quota storage, OpenAI Responses
-API call, client-generated repair brief, and receipt.
+API call, local scanner, bundled GitHub Action, generated repair briefs, and
+receipts.
 
 It does not treat the supplied evidence as independently authenticated. CI
 systems, source hosts, artifact signing, and deployment platforms are outside
@@ -19,6 +20,8 @@ the v1.0 trust boundary.
 5. Invalid or oversized input is rejected before a model call.
 6. A model failure cannot erase or fabricate the deterministic result.
 7. Public output does not overstate evidence provenance.
+8. A pull request cannot make the Action execute project code or inherit job
+   secrets through the scanner's Git child processes.
 
 ## Assets
 
@@ -42,6 +45,10 @@ flowchart LR
     A -->|bounded prompt| O["OpenAI Responses API"]
     O -->|untrusted model output| A
     A -->|validated assessment| U
+
+    PR["Untrusted PR checkout"] --> S["Read-only scanner"]
+    S --> V["Strict schema + deterministic evaluator"]
+    V --> J["GitHub job conclusion + private RUNNER_TEMP artifacts"]
 ```
 
 - Browser input is untrusted, including every evidence string.
@@ -50,6 +57,9 @@ flowchart LR
 - Model output is untrusted until schema and semantic validation succeed.
 - D1 is trusted to persist quota state, not evidence truth.
 - Repository and CI claims inside a packet are not authenticated in v1.0.
+- The GitHub Action trusts its own pinned bundle and scanner, but treats the
+  checked-out repository, its metadata, names, attributes, and working tree as
+  untrusted.
 
 ## Threats and controls
 
@@ -234,19 +244,68 @@ source-content disclosure during packet generation.
 
 **Controls:**
 
-- fixed Git executable and scanner-owned argument arrays with `shell: false`;
+- validated absolute system Git executable, independent of inherited `PATH`,
+  and scanner-owned argument arrays with `shell: false`;
 - hooks, fsmonitor, pagers, prompts, global/system Git config, and network
   transports disabled;
+- allowlisted child environment that excludes tokens, API keys, proxies,
+  `NODE_OPTIONS`, and Git configuration injection variables;
+- a pre-status `git check-attr --stdin -z filter` guard covering tracked and
+  untracked paths; configured content filters stop the scan before they could
+  execute;
 - time and stdout/stderr limits;
 - repository-root containment and metadata symlink checks;
+- bounded index-mode inspection that blocks Gitlink/submodule boundaries without
+  entering the nested worktree;
 - bounded file count and manifest size;
 - output contains summaries and counts, not filenames or source contents;
 - tests use canaries to prove project scripts and hostile metadata are not
   executed or disclosed.
 
-**Residual risk:** sensitive-filename detection is heuristic, and structural
-test/CI signals do not prove execution. Run the scanner only against local
-repositories the operator is permitted to inspect.
+**Residual risk:** sensitive-filename detection is heuristic, structural
+test/CI signals do not prove execution, v1 does not support submodule
+repositories, and a nonstandard Git installation fails indeterminate. Run the
+scanner only against local repositories the operator is permitted to inspect.
+
+### GitHub Action and untrusted pull requests
+
+**Threat:** a fork pull request obtains write credentials, executes
+attacker-controlled project code, escapes the selected workspace path, injects
+workflow commands through metadata, or weakens `BLOCKED` into a successful
+required check.
+
+**Controls:**
+
+- documented trigger is `pull_request`, never privileged
+  `pull_request_target`;
+- caller permissions are `contents: read`, and the Action accepts no token,
+  secret, policy, command, arbitrary receipt path, or `fail-on-blocked` input;
+- the selected path must be relative, remain inside the real
+  `GITHUB_WORKSPACE`, contain no symlink traversal, and equal the discovered Git
+  top-level so a parent worktree is never inspected;
+- the trusted scanner path is resolved from the executing bundle location, not
+  from a caller-controlled or composite-only action-path variable;
+- the Action launches only its pinned scanner with `shell: false`, bounded
+  output and time, and an allowlisted environment;
+- the scanner never runs repository scripts, installs, tests, builds, hooks,
+  content filters, or packet commands;
+- annotations use policy-owned IDs, labels, and statuses rather than untrusted
+  packet prose;
+- artifacts are created exclusively in a new private `RUNNER_TEMP` directory;
+- outputs and receipt are written before an authoritative `BLOCKED` sets a
+  failing job conclusion;
+- no custom Checks API or Commit Status API is called.
+
+**Residual risk:** a pull request may modify its caller workflow while keeping
+the same job name, fork workflows may require maintainer approval before the
+required check starts, and self-hosted runners may expose resources outside
+GitHub's ephemeral runner boundary. Protect workflow changes with required
+review or centrally managed workflow rules, and prefer GitHub-hosted runners
+for untrusted contributions.
+
+The Action's `READY` result is intentionally labeled as a repository baseline.
+It does not authenticate the producer or prove that tests, builds, audits, or
+browser flows executed.
 
 ## Privacy posture
 
@@ -256,6 +315,8 @@ ProofLatch v1.0 is designed to avoid retaining evidence:
 - OpenAI requests use `store: false`;
 - D1 stores only quota state under an HMAC pseudonym;
 - receipts are generated in the client and copied only when the user asks;
+- Action packet, receipt, and optional Codex brief files stay in a fresh
+  `RUNNER_TEMP` directory unless the caller explicitly uploads them;
 - raw source, logs, diffs, secrets, and identity are outside the contract.
 
 Operators should still treat evidence summaries as potentially confidential and
@@ -289,3 +350,10 @@ retroactively describe the digest as authentication.
 - [ ] `npm audit --omit=dev` has no unresolved release blocker.
 - [ ] Anonymous and authenticated production smoke checks are recorded.
 - [ ] Public copy preserves the digest and demo limitations.
+- [ ] Action bundle matches source and runs without runtime dependency install.
+- [ ] Fork-safe scanner tests prove child-env secret exclusion and content
+      filters do not execute.
+- [ ] Example workflow uses `pull_request`, `contents: read`, one stable
+      `ProofLatch` job, and `merge_group` when merge queue is enabled.
+- [ ] Branch ruleset change, Action publication, and release tags remain
+      separately approved external actions.

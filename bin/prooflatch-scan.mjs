@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
+import { constants as fsConstants } from "node:fs";
 import {
+  access,
   lstat,
   readFile,
   readlink,
+  realpath,
 } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+
+import { buildSafeProcessEnv } from "../lib/safe-process-env.mjs";
 
 const SCHEMA_VERSION = "1.0";
 const ZERO_COMMIT = "0000000";
@@ -17,6 +22,13 @@ const MAX_PACKAGE_JSON_BYTES = 256 * 1024;
 const MAX_SCANNED_FILES = 50_000;
 const GIT_TIMEOUT_MS = 8_000;
 
+const trustedGitCandidates =
+  process.platform === "win32"
+    ? [
+        String.raw`C:\Program Files\Git\cmd\git.exe`,
+        String.raw`C:\Program Files\Git\bin\git.exe`,
+      ]
+    : ["/usr/bin/git"];
 const nullDevice = process.platform === "win32" ? "NUL" : "/dev/null";
 const safeGitConfig = [
   "-c",
@@ -67,7 +79,7 @@ const ciFileNames = new Set([
 ]);
 
 const safeEnvironment = {
-  ...process.env,
+  ...buildSafeProcessEnv(),
   GIT_ASKPASS: nullDevice,
   GIT_CONFIG_GLOBAL: nullDevice,
   GIT_CONFIG_NOSYSTEM: "1",
@@ -82,6 +94,23 @@ const safeEnvironment = {
 
 class UsageError extends Error {}
 
+async function resolveTrustedGitExecutable() {
+  for (const candidate of trustedGitCandidates) {
+    try {
+      const canonicalPath = await realpath(candidate);
+      const metadata = await lstat(canonicalPath);
+      if (!path.isAbsolute(canonicalPath) || !metadata.isFile()) {
+        continue;
+      }
+      await access(canonicalPath, fsConstants.X_OK);
+      return canonicalPath;
+    } catch {
+      // Try the next fixed system location.
+    }
+  }
+  return undefined;
+}
+
 function appendBounded(chunks, chunk, state, limit, child) {
   state.size += chunk.length;
   if (state.size > limit) {
@@ -93,20 +122,21 @@ function appendBounded(chunks, chunk, state, limit, child) {
 }
 
 /**
- * Executes only a fixed Git binary and fixed scanner-owned arguments.
+ * Executes only a validated absolute system Git binary and fixed scanner-owned
+ * arguments.
  * User input is confined to the literal value following `-C`; shell expansion,
  * hooks, fsmonitor commands, pagers, prompts, and network transports are disabled.
  */
-async function runGit(root, args) {
+async function runGit(gitExecutable, root, args, { stdin } = {}) {
   return new Promise((resolve) => {
     const child = spawn(
-      "git",
+      gitExecutable,
       [...safeGitConfig, "-C", root, ...args],
       {
         cwd: root,
         env: safeEnvironment,
         shell: false,
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: [stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"],
       },
     );
     const stdoutChunks = [];
@@ -145,6 +175,7 @@ async function runGit(root, args) {
     });
     child.once("close", (code) => {
       clearTimeout(timeout);
+      const stdoutBuffer = Buffer.concat(stdoutChunks);
       resolve({
         ok:
           !spawnError &&
@@ -153,11 +184,19 @@ async function runGit(root, args) {
           !stderrState.truncated &&
           code === 0,
         code,
-        stdout: Buffer.concat(stdoutChunks).toString("utf8"),
+        stdout: stdoutBuffer.toString("utf8"),
+        stdoutBuffer,
         timedOut,
         truncated: stdoutState.truncated || stderrState.truncated,
       });
     });
+
+    if (stdin !== undefined) {
+      child.stdin.on("error", () => {
+        // A closed pipe is represented by the child exit status.
+      });
+      child.stdin.end(stdin);
+    }
   });
 }
 
@@ -226,6 +265,53 @@ function countUnmergedPaths(value) {
     }
   }
   return paths.size;
+}
+
+function inspectGitModes(value) {
+  const gitlinkPaths = new Set();
+
+  for (const record of splitNullRecords(value)) {
+    const separator = record.indexOf("\t");
+    if (separator < 0) {
+      return { complete: false, gitlinkCount: 0 };
+    }
+    const header = record.slice(0, separator);
+    const match =
+      /^([0-7]{6}) (?:[a-f0-9]{40}|[a-f0-9]{64}) [0-3]$/.exec(header);
+    if (!match) {
+      return { complete: false, gitlinkCount: 0 };
+    }
+    if (match[1] === "160000") {
+      gitlinkPaths.add(record.slice(separator + 1));
+    }
+  }
+
+  return { complete: true, gitlinkCount: gitlinkPaths.size };
+}
+
+function inspectFilterAttributes(value, expectedPathCount) {
+  const fields = splitNullRecords(value);
+  if (
+    fields.length !== expectedPathCount * 3 ||
+    fields.length % 3 !== 0
+  ) {
+    return { complete: false, executable: false };
+  }
+
+  for (let index = 0; index < fields.length; index += 3) {
+    if (fields[index + 1] !== "filter") {
+      return { complete: false, executable: false };
+    }
+    const attributeValue = fields[index + 2];
+    if (
+      attributeValue !== "unspecified" &&
+      attributeValue !== "unset"
+    ) {
+      return { complete: true, executable: true };
+    }
+  }
+
+  return { complete: true, executable: false };
 }
 
 function isSensitivePath(relativePath) {
@@ -569,12 +655,22 @@ function unavailablePacket(root, options, generatedAt) {
 export async function scanRepository({
   root = process.cwd(),
   releaseVersion,
+  requireRoot = false,
   target = "Local release candidate",
   now = new Date(),
 } = {}) {
   const resolvedRoot = path.resolve(root);
   const generatedAt = now.toISOString();
-  const topLevelResult = await runGit(resolvedRoot, [
+  const gitExecutable = await resolveTrustedGitExecutable();
+  if (!gitExecutable) {
+    return unavailablePacket(
+      resolvedRoot,
+      { releaseVersion, target },
+      generatedAt,
+    );
+  }
+
+  const topLevelResult = await runGit(gitExecutable, resolvedRoot, [
     "rev-parse",
     "--show-toplevel",
   ]);
@@ -595,27 +691,60 @@ export async function scanRepository({
       generatedAt,
     );
   }
-  const repositoryRoot = path.resolve(topLevel);
+  let repositoryRoot = path.resolve(topLevel);
 
-  const [headResult, branchResult, statusResult, conflictResult, filesResult] =
+  if (requireRoot) {
+    let canonicalRequestedRoot;
+    let canonicalRepositoryRoot;
+    try {
+      [canonicalRequestedRoot, canonicalRepositoryRoot] = await Promise.all([
+        realpath(resolvedRoot),
+        realpath(repositoryRoot),
+      ]);
+    } catch {
+      return unavailablePacket(
+        resolvedRoot,
+        { releaseVersion, target },
+        generatedAt,
+      );
+    }
+
+    if (canonicalRequestedRoot !== canonicalRepositoryRoot) {
+      return unavailablePacket(
+        resolvedRoot,
+        { releaseVersion, target },
+        generatedAt,
+      );
+    }
+    repositoryRoot = canonicalRepositoryRoot;
+  }
+
+  const [headResult, branchResult, conflictResult, filesResult, modesResult] =
     await Promise.all([
-      runGit(repositoryRoot, ["rev-parse", "--verify", "HEAD"]),
-      runGit(repositoryRoot, ["symbolic-ref", "--short", "-q", "HEAD"]),
-      runGit(repositoryRoot, [
-        "status",
-        "--porcelain=v1",
-        "-z",
-        "--untracked-files=all",
-        "--ignore-submodules=all",
+      runGit(gitExecutable, repositoryRoot, [
+        "rev-parse",
+        "--verify",
+        "HEAD",
       ]),
-      runGit(repositoryRoot, ["ls-files", "--unmerged", "-z"]),
-      runGit(repositoryRoot, [
+      runGit(gitExecutable, repositoryRoot, [
+        "symbolic-ref",
+        "--short",
+        "-q",
+        "HEAD",
+      ]),
+      runGit(gitExecutable, repositoryRoot, [
+        "ls-files",
+        "--unmerged",
+        "-z",
+      ]),
+      runGit(gitExecutable, repositoryRoot, [
         "ls-files",
         "--cached",
         "--others",
         "--exclude-standard",
         "-z",
       ]),
+      runGit(gitExecutable, repositoryRoot, ["ls-files", "--stage", "-z"]),
     ]);
 
   const fileRecords = filesResult.ok
@@ -625,6 +754,31 @@ export async function scanRepository({
   const filesForInspection = tooManyFiles
     ? fileRecords.slice(0, MAX_SCANNED_FILES)
     : fileRecords;
+  const modeInspection = modesResult.ok
+    ? inspectGitModes(modesResult.stdout)
+    : { complete: false, gitlinkCount: 0 };
+  const filterResult =
+    filesResult.ok && modeInspection.complete && !tooManyFiles
+      ? await runGit(
+          gitExecutable,
+          repositoryRoot,
+          ["check-attr", "--stdin", "-z", "filter"],
+          { stdin: filesResult.stdoutBuffer },
+        )
+      : undefined;
+  const filterInspection = filterResult?.ok
+    ? inspectFilterAttributes(filterResult.stdout, fileRecords.length)
+    : { complete: false, executable: false };
+  const statusResult =
+    filterInspection.complete && !filterInspection.executable
+      ? await runGit(gitExecutable, repositoryRoot, [
+          "status",
+          "--porcelain=v1",
+          "-z",
+          "--untracked-files=all",
+          "--ignore-submodules=all",
+        ])
+      : undefined;
   const signals = await inspectFiles(repositoryRoot, filesForInspection);
   const head = headResult.ok
     ? headResult.stdout.trim().toLowerCase()
@@ -632,16 +786,21 @@ export async function scanRepository({
   const branch = branchResult.ok
     ? sanitizeBranch(branchResult.stdout)
     : "detached";
-  const dirtyFiles = statusResult.ok
+  const dirtyFiles = statusResult?.ok
     ? parsePorcelainStatus(statusResult.stdout)
     : 0;
   const conflictCount = conflictResult.ok
     ? countUnmergedPaths(conflictResult.stdout)
     : 0;
+  const unsafeBoundaryCount =
+    signals.unsafeSymlinkCount + modeInspection.gitlinkCount;
   const scanComplete =
-    statusResult.ok &&
+    statusResult?.ok &&
     conflictResult.ok &&
     filesResult.ok &&
+    modeInspection.complete &&
+    filterInspection.complete &&
+    !filterInspection.executable &&
     !tooManyFiles;
 
   const checks = [
@@ -652,7 +811,13 @@ export async function scanRepository({
       status: scanComplete ? "pass" : "fail",
       summary: scanComplete
         ? `Inspected ${fileRecords.length} repository paths without executing project code.`
-        : "Repository metadata inspection was incomplete or exceeded the safe file limit.",
+        : filterInspection.executable
+          ? "Repository inspection stopped because a content filter could execute during working tree inspection."
+          : !modeInspection.complete
+            ? "Repository entry modes could not be verified safely."
+            : !filterInspection.complete && filesResult.ok && !tooManyFiles
+              ? "Repository content filter attributes could not be verified safely."
+              : "Repository metadata inspection was incomplete or exceeded the safe file limit.",
       required: true,
     }),
     makeCheck({
@@ -683,12 +848,14 @@ export async function scanRepository({
       id: "clean-tree",
       label: "Clean source state",
       category: "source",
-      status: statusResult.ok && dirtyFiles === 0 ? "pass" : "fail",
-      summary: !statusResult.ok
-        ? "Working tree state could not be verified."
-        : dirtyFiles === 0
-          ? "No tracked or untracked release changes are pending."
-          : `${dirtyFiles} working tree path${dirtyFiles === 1 ? "" : "s"} differ from the pinned commit.`,
+      status: statusResult?.ok && dirtyFiles === 0 ? "pass" : "fail",
+      summary: filterInspection.executable
+        ? "Working tree state was not inspected because a repository content filter could execute."
+        : !statusResult?.ok
+          ? "Working tree state could not be verified."
+          : dirtyFiles === 0
+            ? "No tracked or untracked release changes are pending."
+            : `${dirtyFiles} working tree path${dirtyFiles === 1 ? "" : "s"} differ from the pinned commit.`,
       required: true,
       command: "git status --porcelain",
     }),
@@ -696,11 +863,13 @@ export async function scanRepository({
       id: "unsafe-symlinks",
       label: "Repository-bound metadata",
       category: "security",
-      status: signals.unsafeSymlinkCount === 0 ? "pass" : "fail",
-      summary:
-        signals.unsafeSymlinkCount === 0
+      status:
+        modeInspection.complete && unsafeBoundaryCount === 0 ? "pass" : "fail",
+      summary: !modeInspection.complete
+        ? "Tracked entry modes could not be verified for nested repository boundaries."
+        : unsafeBoundaryCount === 0
           ? "Release metadata was read only from regular files inside the worktree."
-          : `${signals.unsafeSymlinkCount} unsafe or ambiguous metadata link${signals.unsafeSymlinkCount === 1 ? "" : "s"} were rejected.`,
+          : `${unsafeBoundaryCount} unsafe, ambiguous, or nested-repository boundar${unsafeBoundaryCount === 1 ? "y was" : "ies were"} rejected.`,
       required: true,
     }),
     makeCheck({
@@ -826,6 +995,7 @@ function validateTextOption(name, value, minimum, maximum) {
 export function parseArguments(argv) {
   const options = {
     pretty: false,
+    requireRoot: false,
     root: process.cwd(),
     target: "Local release candidate",
   };
@@ -837,6 +1007,10 @@ export function parseArguments(argv) {
     }
     if (argument === "--pretty") {
       options.pretty = true;
+      continue;
+    }
+    if (argument === "--require-root") {
+      options.requireRoot = true;
       continue;
     }
     if (argument === "--root") {
@@ -883,6 +1057,7 @@ function usage() {
     "",
     "Options:",
     "  --root <path>             Git worktree to inspect (default: current directory)",
+    "  --require-root            Require --root to be the exact Git worktree root",
     "  --release-version <value> Override the release version",
     "  --target <value>          Release target label",
     "  --pretty                  Pretty-print the JSON packet",

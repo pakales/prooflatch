@@ -74,6 +74,30 @@ The `command` field is displayed and may be repeated in a Codex repair brief.
 The web evaluator never executes it. The separate baseline scanner runs only
 its own fixed Git commands; it never executes a packet-provided command.
 
+## GitHub Action producer
+
+The bundled JavaScript Action produces only
+`repository-baseline@1.0.0` evidence. It invokes the fixed ProofLatch scanner
+from the checked-out Action package, validates the complete packet with the same
+schema and server-owned policy used by the web product, and then runs the same
+deterministic evaluator.
+
+When GitHub provides `GITHUB_SHA`, the Action requires the packet's full commit
+identifier to match it exactly. A mismatch is indeterminate and cannot produce
+a successful check.
+
+The Action writes three bounded artifacts:
+
+- the exact repository-baseline evidence packet;
+- a deterministic receipt;
+- a Codex repair brief only when the verdict is `BLOCKED`.
+
+These files are created under `RUNNER_TEMP`, not in the checked-out repository.
+The Action exposes their paths as step outputs so the caller may explicitly
+upload them. An artifact produced by a GitHub workflow still inherits that
+workflow's trust boundary; it is not signed provenance or an independent
+attestation.
+
 ## Policy profiles
 
 ### `web-release@1.0.0`
@@ -109,6 +133,10 @@ test file or CI configuration do not mean those systems ran successfully.
 | `test-signal` | tests | yes |
 | `ci-signal` | coordination | no |
 | `readme` | coordination | no |
+
+For v1, `unsafe-symlinks` also blocks Git mode `160000` gitlink entries. This
+prevents an ignored or dirty submodule worktree from being represented as clean
+parent-repository evidence.
 
 Validation rejects:
 
@@ -149,5 +177,10 @@ truthful, that its commands ran, or that the named commit came from a trusted
 repository. The receipt digest detects changes to the captured data; it does not
 authenticate the producer.
 
+The Action narrows this limitation by generating its own baseline packet and
+binding it to the checked-out `GITHUB_SHA`. It does not prove that tests, builds,
+audits, or deployments ran, and a compromised runner or Action dependency
+remains inside the producer boundary.
+
 Signed CI provenance is intentionally left outside v1.0 rather than implied by
-the current receipt.
+the current receipt or Action artifact.

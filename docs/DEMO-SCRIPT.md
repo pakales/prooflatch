@@ -147,8 +147,8 @@ Deterministic rules decide BLOCKED or READY. GPT-5.6 Sol explains the supplied
 evidence and creates a bounded Codex repair brief. New evidence produces a new
 receipt.
 
-Live app: TODO_DEPLOYED_APP_URL
-Source and setup: TODO_PUBLIC_REPOSITORY_URL
+Live app: https://prooflatch-buildweek.e-vigelis.chatgpt.site
+Source and setup: https://github.com/pakales/prooflatch
 
 Built for OpenAI Build Week with Codex + GPT-5.6.
 

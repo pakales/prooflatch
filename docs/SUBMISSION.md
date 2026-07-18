@@ -1,8 +1,8 @@
 # ProofLatch — Devpost Submission Copy
 
-> Draft for the final verified build. Replace every `TODO_*` placeholder and
-> remove any statement that is not demonstrated by the exact submitted
-> deployment.
+> Public submission draft for the verified build. The repository and live app
+> links are final; the demo-video and Devpost-submission steps remain explicitly
+> pending until a public recording exists and the final entry is approved.
 
 ## Core fields
 
@@ -157,7 +157,7 @@ Honest boundaries make the receipt more useful, not less.
 
 No repository access or source upload is required.
 
-1. Open `TODO_DEPLOYED_APP_URL`.
+1. Open `https://prooflatch-buildweek.e-vigelis.chatgpt.site`.
 2. Sign in with ChatGPT when prompted to enable live GPT-5.6 analysis.
 3. Click **Run release proof** on the bundled Atlas Checkout fixture.
 4. Inspect the `BLOCKED` verdict and failed checks.
@@ -173,11 +173,12 @@ and the UI explicitly labels fallback mode.
 
 ## Links
 
-- **Live app:** `TODO_DEPLOYED_APP_URL`
-- **Public repository:** `TODO_PUBLIC_REPOSITORY_URL`
-- **Public YouTube demo:** `TODO_PUBLIC_YOUTUBE_URL`
+- **Live app:** `https://prooflatch-buildweek.e-vigelis.chatgpt.site`
+- **Public repository:** `https://github.com/pakales/prooflatch`
+- **Public YouTube demo:** Pending final public recording; do not submit the
+  Devpost entry until this link exists.
 - **Codex session ID:** `019f7221-2421-78e3-b12e-f6082da1ed87`
-- **License:** `TODO_PUBLIC_REPOSITORY_URL/blob/main/LICENSE`
+- **License:** `https://github.com/pakales/prooflatch/blob/main/LICENSE`
 
 ## Evaluation criteria mapping
 

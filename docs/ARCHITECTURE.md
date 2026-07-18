@@ -80,6 +80,43 @@ The evaluator is a pure function of the validated packet and explicit evaluator
 version. No model, network request, browser state, or current clock participates
 in the verdict.
 
+### GitHub Action baseline gate
+
+The root [`action.yml`](../action.yml) exposes the same deterministic core as a
+token-free Node 24 JavaScript Action. Its runtime path is deliberately separate
+from `/api/analyze`:
+
+```mermaid
+flowchart LR
+    PR["Checked-out PR or merge-group commit"] --> Scan["Read-only scanner"]
+    Scan --> Schema["Strict packet + policy validation"]
+    Schema --> Gate["Deterministic evaluator"]
+    Gate --> Artifacts["Packet + receipt"]
+    Gate -->|BLOCKED only| Brief["Bounded Codex brief"]
+    Gate --> Job["GitHub Actions job conclusion"]
+```
+
+The Action:
+
+- scans only a relative, non-symlinked Git root inside `GITHUB_WORKSPACE` and
+  rejects discovery of a parent worktree;
+- runs no project scripts, installs, tests, builds, model calls, or network
+  requests;
+- uses no GitHub token or secret;
+- writes fresh private files under `RUNNER_TEMP`;
+- sets outputs before `BLOCKED` fails the step;
+- treats scanner `review` as deterministic `READY` with advisory warnings;
+- treats scanner `blocked` or `indeterminate` as `BLOCKED`.
+
+The caller owns the required-check name. One non-matrix job named exactly
+`ProofLatch` produces one GitHub Actions check that a branch ruleset can
+require. The Action does not create a second Check Run or Commit Status.
+
+This Action evaluates `repository-baseline@1.0.0`. Its `READY` state is a
+structural baseline result, not evidence that tests, build, dependency audit,
+or browser validation executed. See
+[`docs/GITHUB-ACTION.md`](GITHUB-ACTION.md).
+
 ### Analysis boundary
 
 [`app/api/analyze/route.ts`](../app/api/analyze/route.ts) is the only model call
@@ -134,6 +171,17 @@ only fixed Git commands with shell execution disabled, neutralizes hooks,
 fsmonitor, pagers, prompts, and network transports, and bounds time and output.
 It does not run project code or tests, and it does not read arbitrary source
 contents.
+
+Before asking Git for working-tree status, the scanner verifies `filter`
+attributes across the tracked and untracked path set. A configured content
+filter can execute an external process, so its presence produces an
+`indeterminate` packet without running `git status`. Git child processes also
+receive an explicit environment allowlist rather than inheriting job secrets,
+runtime injection variables, or repository-controlled Git configuration.
+
+The scanner resolves Git from a fixed standard system location rather than the
+inherited `PATH`. It also inspects bounded index modes and blocks all mode
+`160000` gitlinks in v1 without entering submodule worktrees.
 
 ### Hosting
 
@@ -214,6 +262,8 @@ The client-generated JSON receipt contains:
 - repository and release coordinates;
 - each check ID, status, and requirement flag;
 - explanation mode and returned model identifier.
+- explicit prompt version, or `null` when no model prompt exists;
+- optional producer metadata for the GitHub Action.
 
 The receipt is a portable summary of the supplied evidence state. It is not a
 deployment authorization, attestation, or audit certificate.
@@ -231,6 +281,9 @@ deployment authorization, attestation, or audit certificate.
 | Empty or invalid structured output | Deterministic fallback |
 | Unknown risk/repair check ID | Deterministic fallback |
 | Risks or repairs returned for `READY` | Deterministic fallback |
+| Action path escapes workspace or crosses a symlink | Action error; no verdict |
+| Scanner content filter cannot be proven inert | `BLOCKED` / `indeterminate` |
+| Action packet fails schema or commit binding | Action error; no receipt |
 
 The fallback is a first-class reliability path. It is always labeled; it never
 masquerades as GPT-5.6 output.

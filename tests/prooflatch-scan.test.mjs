@@ -20,6 +20,7 @@ import {
   scanRepository,
 } from "../bin/prooflatch-scan.mjs";
 import { evidencePacketSchema } from "../lib/prooflatch-schema.ts";
+import { buildSafeProcessEnv } from "../lib/safe-process-env.mjs";
 
 const execFileAsync = promisify(execFile);
 const scannerPath = new URL("../bin/prooflatch-scan.mjs", import.meta.url);
@@ -28,7 +29,7 @@ const fixedNow = new Date("2026-07-18T12:00:00.000Z");
 async function git(root, ...args) {
   return execFileAsync("git", ["-C", root, ...args], {
     env: {
-      ...process.env,
+      ...buildSafeProcessEnv(),
       GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
       GIT_CONFIG_NOSYSTEM: "1",
       GIT_TERMINAL_PROMPT: "0",
@@ -109,9 +110,51 @@ function checkById(packet, id) {
   return check;
 }
 
-async function runCli(args) {
+test("safe child environment excludes inherited secrets and injection controls", () => {
+  const safeEnvironment = buildSafeProcessEnv(
+    {
+      PATH: "/safe/bin",
+      TMPDIR: "/safe/tmp",
+      HOME: "/Users/operator",
+      OPENAI_API_KEY: "OPENAI_ENV_SECRET_CANARY_4a22",
+      PROOFLATCH_QUOTA_SALT: "QUOTA_ENV_SECRET_CANARY_c910",
+      NODE_OPTIONS: "--require=/tmp/hostile-loader.cjs",
+      GIT_CONFIG_COUNT: "1",
+      GIT_CONFIG_KEY_0: "core.fsmonitor",
+      GIT_CONFIG_VALUE_0: "/tmp/hostile-fsmonitor",
+    },
+    "darwin",
+  );
+
+  assert.deepEqual(safeEnvironment, {
+    PATH: "/safe/bin",
+    TMPDIR: "/safe/tmp",
+  });
+
+  const windowsEnvironment = buildSafeProcessEnv(
+    {
+      Path: "C:\\Git\\cmd;C:\\Windows\\System32",
+      SYSTEMROOT: "C:\\Windows",
+      COMSPEC: "C:\\Windows\\System32\\cmd.exe",
+      PATHEXT: ".COM;.EXE;.BAT;.CMD",
+      USERPROFILE: "C:\\Users\\operator",
+      OPENAI_API_KEY: "WINDOWS_ENV_SECRET_CANARY_b812",
+    },
+    "win32",
+  );
+
+  assert.deepEqual(windowsEnvironment, {
+    PATH: "C:\\Git\\cmd;C:\\Windows\\System32",
+    SystemRoot: "C:\\Windows",
+    ComSpec: "C:\\Windows\\System32\\cmd.exe",
+    PATHEXT: ".COM;.EXE;.BAT;.CMD",
+  });
+});
+
+async function runCli(args, { environment } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [scannerPath.pathname, ...args], {
+      ...(environment ? { env: environment } : {}),
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -182,6 +225,111 @@ test("emits a schema-valid ready packet without running project code", async (t)
   await assert.rejects(readFile(path.join(root, "project-code-ran")));
 });
 
+test("stops before git status when a hostile content filter is present", async (t) => {
+  const root = await makeReadyRepository(t);
+  const filterMarker = path.join(root, "content-filter-was-run");
+  const filterScript = path.join(root, "hostile-filter.sh");
+  await writeFile(
+    filterScript,
+    `#!/bin/sh\nprintf unsafe > "${filterMarker}"\ncat\n`,
+  );
+  await chmod(filterScript, 0o755);
+  await git(root, "add", "hostile-filter.sh");
+  await git(root, "commit", "-q", "-m", "add filter trap");
+  await git(root, "config", "filter.prooflatch-hostile.clean", filterScript);
+  await git(root, "config", "filter.prooflatch-hostile.required", "true");
+  await writeFile(
+    path.join(root, ".gitattributes"),
+    "package.json filter=prooflatch-hostile\n",
+  );
+  await writeFile(
+    path.join(root, "package.json"),
+    `${JSON.stringify(
+      {
+        name: "fixture-project",
+        version: "1.2.4",
+        type: "module",
+        scripts: { test: "node --test" },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+
+  const result = await scanRepository({ root, now: fixedNow });
+
+  evidencePacketSchema.parse(result.packet);
+  assert.equal(result.exitCode, 3);
+  assert.equal(result.state, "indeterminate");
+  assert.equal(checkById(result.packet, "scan-complete").status, "fail");
+  assert.equal(checkById(result.packet, "clean-tree").status, "fail");
+  assert.match(
+    checkById(result.packet, "scan-complete").summary,
+    /content filter could execute/,
+  );
+  assert.equal(result.packet.repository.dirtyFiles, 0);
+  await assert.rejects(readFile(filterMarker));
+});
+
+test("blocks a Git gitlink without entering the nested repository", async (t) => {
+  const root = await makeReadyRepository(t);
+  const { stdout: headOutput } = await git(root, "rev-parse", "HEAD");
+  await git(
+    root,
+    "update-index",
+    "--add",
+    "--cacheinfo",
+    `160000,${headOutput.trim()},vendor/submodule`,
+  );
+  await git(root, "commit", "-q", "-m", "add nested repository gitlink");
+
+  const result = await scanRepository({ root, now: fixedNow });
+
+  evidencePacketSchema.parse(result.packet);
+  assert.equal(result.exitCode, 2);
+  assert.equal(result.state, "blocked");
+  assert.equal(result.packet.repository.dirtyFiles, 0);
+  assert.equal(checkById(result.packet, "scan-complete").status, "pass");
+  assert.equal(checkById(result.packet, "unsafe-symlinks").status, "fail");
+  assert.match(
+    checkById(result.packet, "unsafe-symlinks").summary,
+    /nested-repository boundary was rejected/,
+  );
+});
+
+test("ignores a fake Git executable injected through PATH", async (t) => {
+  const root = await makeReadyRepository(t);
+  const trapRoot = await makeTempDirectory(t);
+  const fakeBin = path.join(trapRoot, "bin");
+  const marker = path.join(trapRoot, "fake-git-was-run");
+  const fakeGit = path.join(
+    fakeBin,
+    process.platform === "win32" ? "git.cmd" : "git",
+  );
+  await mkdir(fakeBin);
+  await writeFile(
+    fakeGit,
+    process.platform === "win32"
+      ? `@echo off\r\n> "${marker}" echo unsafe\r\nexit /b 99\r\n`
+      : `#!/bin/sh\nprintf unsafe > "${marker}"\nexit 99\n`,
+  );
+  if (process.platform !== "win32") {
+    await chmod(fakeGit, 0o755);
+  }
+
+  const result = await runCli(["--root", root, "--require-root"], {
+    environment: {
+      ...buildSafeProcessEnv(),
+      PATH: fakeBin,
+    },
+  });
+
+  assert.equal(result.code, 0);
+  assert.equal(result.stderr, "");
+  evidencePacketSchema.parse(JSON.parse(result.stdout));
+  await assert.rejects(readFile(marker));
+});
+
 test("CLI prints only the packet and preserves ready exit semantics", async (t) => {
   const root = await makeReadyRepository(t);
   const result = await runCli([
@@ -198,6 +346,36 @@ test("CLI prints only the packet and preserves ready exit semantics", async (t) 
   const packet = evidencePacketSchema.parse(JSON.parse(result.stdout));
   assert.equal(packet.release.version, "9.4.1");
   assert.equal(packet.release.target, "Production");
+});
+
+test("require-root rejects a nested path without inspecting its parent worktree", async (t) => {
+  const repositoryRoot = await makeReadyRepository(t);
+  const nestedRoot = path.join(repositoryRoot, "nested-workspace");
+  await mkdir(nestedRoot);
+
+  const strictResult = await runCli([
+    "--root",
+    nestedRoot,
+    "--require-root",
+  ]);
+
+  assert.equal(strictResult.code, 3);
+  assert.equal(strictResult.stderr, "");
+  const strictPacket = evidencePacketSchema.parse(
+    JSON.parse(strictResult.stdout),
+  );
+  assert.equal(strictPacket.repository.name, "nested-workspace");
+  assert.equal(strictPacket.repository.commit, "0000000");
+  assert.equal(strictPacket.repository.dirtyFiles, 0);
+  assert.equal(checkById(strictPacket, "scan-complete").status, "fail");
+  assert.equal(checkById(strictPacket, "git-head").status, "fail");
+
+  const compatibleResult = await runCli(["--root", nestedRoot]);
+  assert.equal(compatibleResult.code, 0);
+  const compatiblePacket = evidencePacketSchema.parse(
+    JSON.parse(compatibleResult.stdout),
+  );
+  assert.match(compatiblePacket.repository.commit, /^[a-f0-9]{40}$/);
 });
 
 test("uses review exit code for optional CI and README warnings", async (t) => {
@@ -358,4 +536,17 @@ test("rejects malformed CLI options with usage exit code", async () => {
   assert.equal(result.code, 64);
   assert.equal(result.stdout, "");
   assert.match(result.stderr, /^ProofLatch scanner:/);
+});
+
+test("documents and parses the require-root CLI flag", async () => {
+  assert.equal(parseArguments(["--require-root"]).requireRoot, true);
+  assert.equal(parseArguments([]).requireRoot, false);
+
+  const result = await runCli(["--help"]);
+  assert.equal(result.code, 0);
+  assert.equal(result.stderr, "");
+  assert.match(
+    result.stdout,
+    /^Usage: prooflatch-scan \[options\][\s\S]*--require-root/m,
+  );
 });

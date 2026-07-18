@@ -1,0 +1,2 @@
+# Generated bundle contains upstream template-literal indentation.
+action/dist/index.mjs -whitespace

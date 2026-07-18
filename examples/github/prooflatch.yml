@@ -1,0 +1,29 @@
+# Copy this file into .github/workflows/prooflatch.yml. For production, replace
+# @v1 with the immutable commit SHA from the ProofLatch v1.0.0 GitHub release.
+name: ProofLatch
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+jobs:
+  prooflatch:
+    name: ProofLatch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the evaluated commit
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+
+      - name: Evaluate the repository baseline
+        id: prooflatch
+        uses: pakales/prooflatch@v1
+        with:
+          path: .
+          target: Pull request repository baseline

@@ -1,22 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  createCodexRepairBrief,
+  createProofLatchReceipt,
+  type ProofLatchArtifactResult,
+} from "@/lib/prooflatch-artifacts";
 import { releasePolicies } from "@/lib/release-policies";
 import { blockedSample, fixedSample } from "@/lib/sample-evidence";
 import {
   evidencePacketSchema,
-  type DeterministicAssessment,
   type EvidenceCheck,
   type EvidencePacket,
-  type ModelAnalysis,
 } from "@/lib/prooflatch-schema";
 
-type AnalysisResponse = {
+type AnalysisResponse = Omit<ProofLatchArtifactResult, "mode"> & {
   mode: "gpt-5.6-live" | "deterministic-fallback";
-  model: string | null;
-  assessment: DeterministicAssessment;
-  analysis: ModelAnalysis;
-  evaluatorVersion: string;
   promptVersion: string;
 };
 
@@ -55,70 +54,6 @@ function StatusMark({ status }: { status: EvidenceCheck["status"] }) {
     <span className={`status-mark status-${status}`} aria-hidden="true">
       {status === "pass" ? "✓" : status === "warn" ? "!" : "×"}
     </span>
-  );
-}
-
-function makeRepairBrief(
-  packet: EvidencePacket,
-  response: AnalysisResponse,
-): string {
-  const lines = [
-    "# ProofLatch Codex repair brief",
-    "",
-    `Repository: ${packet.repository.name}`,
-    `Branch: ${packet.repository.branch}`,
-    `Commit: ${packet.repository.commit}`,
-    `Policy: ${packet.policy.id}@${packet.policy.version}`,
-    `Authoritative verdict: ${response.assessment.verdict}`,
-    `Evidence digest: ${response.assessment.proofHash}`,
-    "",
-    `Objective: ${response.analysis.repairObjective}`,
-    "",
-  ];
-
-  for (const [index, step] of response.analysis.repairSteps.entries()) {
-    lines.push(
-      `${index + 1}. [${step.checkId}] ${step.action}`,
-      `   Verify: ${step.verify}`,
-    );
-  }
-
-  lines.push(
-    "",
-    `Stop condition: ${response.analysis.stopCondition}`,
-    "",
-    "Do not weaken, skip, or relabel a release gate to make the verdict pass.",
-    "After the evidence changes, regenerate the packet and run ProofLatch again.",
-  );
-
-  return lines.join("\n");
-}
-
-function makeReceipt(
-  packet: EvidencePacket,
-  response: AnalysisResponse,
-): string {
-  return JSON.stringify(
-    {
-      product: "ProofLatch",
-      schemaVersion: packet.schemaVersion,
-      policy: packet.policy,
-      evaluatorVersion: response.evaluatorVersion,
-      verdict: response.assessment.verdict,
-      score: response.assessment.score,
-      evidenceDigest: response.assessment.proofHash,
-      repository: packet.repository,
-      release: packet.release,
-      checks: packet.checks.map((check) => ({
-        id: check.id,
-        status: check.status,
-        required: check.required,
-      })),
-      explanationMode: response.mode,
-      model: response.model,
-    },
-    null,
-    2,
   );
 }
 
@@ -251,8 +186,8 @@ export function ProofLatchApp({
     if (!response) return;
     const value =
       kind === "brief"
-        ? makeRepairBrief(packet, response)
-        : makeReceipt(packet, response);
+        ? createCodexRepairBrief(packet, response)
+        : createProofLatchReceipt(packet, response);
     await copyText(value);
     setCopyState(kind);
     window.setTimeout(() => setCopyState(null), 1_800);
