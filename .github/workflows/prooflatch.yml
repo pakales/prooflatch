@@ -24,7 +24,7 @@ jobs:
           persist-credentials: false
 
       - name: Evaluate the repository baseline
-        uses: pakales/prooflatch@c834328fa58babf64b78a02107479e36c5985d1f
+        uses: pakales/prooflatch@5c23a2620afe12fc1adfed1adee69fa387bc00aa
         with:
           path: .
           target: Pull request repository baseline
