@@ -19,6 +19,8 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
 
+import yaml from "js-yaml";
+
 import { evidencePacketSchema } from "../lib/prooflatch-schema.ts";
 
 const execFileAsync = promisify(execFile);
@@ -291,6 +293,7 @@ async function assertPrivateArtifacts(outputs) {
 
 test("action metadata exposes only the token-free repository baseline contract", async () => {
   const metadata = await readFile(metadataPath, "utf8");
+  const parsedMetadata = yaml.load(metadata);
 
   assert.deepEqual(sectionKeys(metadata, "inputs", "outputs"), [
     "path",
@@ -309,8 +312,10 @@ test("action metadata exposes only the token-free repository baseline contract",
     "receipt-path",
     "repair-brief-path",
   ]);
-  assert.match(metadata, /^\s+using: node24$/m);
-  assert.match(metadata, /^\s+main: action\/dist\/index\.mjs$/m);
+  assert.equal(parsedMetadata.runs.using, "node24");
+  assert.equal(parsedMetadata.runs.main, "action/dist/index.mjs");
+  assert.match(metadata, /^\s+using: "node24"$/m);
+  assert.match(metadata, /^\s+main: "action\/dist\/index\.mjs"$/m);
   assert.doesNotMatch(
     sectionKeys(metadata, "inputs", "outputs").join("\n"),
     /token|policy|commands|fail-on-blocked/,
