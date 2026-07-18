@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "1.0",
+  "policy": {
+    "id": "web-release",
+    "version": "1.0.0"
+  },
+  "repository": {
+    "name": "Atlas Checkout",
+    "branch": "release/2.4.0",
+    "commit": "87a9e01d51c6e9f5",
+    "dirtyFiles": 0
+  },
+  "release": {
+    "version": "2.4.0",
+    "target": "Production",
+    "generatedAt": "2026-07-18T10:30:00.000Z"
+  },
+  "checks": [
+    {
+      "id": "clean-tree",
+      "label": "Clean source state",
+      "category": "source",
+      "status": "pass",
+      "summary": "No uncommitted files; release commit is pinned.",
+      "command": "git status --short",
+      "required": true,
+      "durationMs": 42
+    },
+    {
+      "id": "unit-suite",
+      "label": "Unit and integration tests",
+      "category": "tests",
+      "status": "fail",
+      "summary": "1 checkout idempotency test failed out of 214.",
+      "command": "npm test",
+      "required": true,
+      "durationMs": 18440
+    },
+    {
+      "id": "security-audit",
+      "label": "Production dependency audit",
+      "category": "security",
+      "status": "fail",
+      "summary": "One high-severity production dependency advisory remains.",
+      "command": "npm audit --omit=dev",
+      "required": true,
+      "durationMs": 2140
+    },
+    {
+      "id": "build",
+      "label": "Production build",
+      "category": "release",
+      "status": "pass",
+      "summary": "Production bundle completed without compilation errors.",
+      "command": "npm run build",
+      "required": true,
+      "durationMs": 9870
+    },
+    {
+      "id": "browser-smoke",
+      "label": "Critical browser flow",
+      "category": "runtime",
+      "status": "warn",
+      "summary": "Desktop checkout passed; mobile viewport evidence is missing.",
+      "command": "npm run test:e2e",
+      "required": false,
+      "durationMs": 6510
+    },
+    {
+      "id": "session-collision",
+      "label": "Codex session collision guard",
+      "category": "coordination",
+      "status": "pass",
+      "summary": "No other active agent owns the release workstream.",
+      "required": true,
+      "durationMs": 180
+    },
+    {
+      "id": "rollback",
+      "label": "Rollback path",
+      "category": "release",
+      "status": "pass",
+      "summary": "Previous production artifact and rollback command are recorded.",
+      "required": true
+    }
+  ]
+}
