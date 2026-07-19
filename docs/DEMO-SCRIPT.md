@@ -1,5 +1,29 @@
 # ProofLatch 2:50 Demo Script
 
+## Published video record
+
+- **Public URL:** `https://youtu.be/bzU7mK8DqiI`
+- **Final runtime:** 2:37
+- **Visibility:** Public
+- **Channel:** EV1 Labs
+- **Captions:** English
+
+The public video demonstrates the authenticated GPT-5.6 path and remains
+accurate because Judge Mode does not change that path. The signed-out product
+flow added afterward is deliberately shorter and is covered by the live
+acceptance sequence below; a replacement recording is not required.
+
+## Signed-out 60-second judge sequence
+
+1. Open the live app signed out.
+2. Click **Run deterministic proof** and show `BLOCKED`, the digest, and
+   **Copy decision receipt**.
+3. Click **Apply demo fix set** and point to the fixture-only disclosure.
+4. Click **Re-run deterministic proof** and show `READY` plus the changed
+   digest.
+5. Point to **Sign in for GPT-5.6** as an optional explanation path, not a
+   requirement to test the deterministic product.
+
 ## Recording target
 
 - **Maximum final runtime:** 2:50, leaving ten seconds below the three-minute
@@ -121,22 +145,22 @@ session ID.
 
 End on the ProofLatch decision desk and live URL.
 
-## Capture checklist
+## Published-video QA
 
-- [ ] The final cut is 2:50 or shorter.
-- [ ] Narration is audible on phone and laptop speakers.
-- [ ] Both Codex's build role and GPT-5.6's runtime role are explicit.
-- [ ] `BLOCKED`, repair brief, simulated fix disclosure, `READY`, and receipt
+- [x] The final cut is 2:37.
+- [x] Narration is audible on phone and laptop speakers.
+- [x] Both Codex's build role and GPT-5.6's runtime role are explicit.
+- [x] `BLOCKED`, repair brief, simulated fix disclosure, `READY`, and receipt
       are all visible.
-- [ ] The model mode label is visible during at least one run.
-- [ ] The evidence digest changes between fixture states.
-- [ ] The demo never implies the fixture button repaired real code.
-- [ ] Digest and bug-free limitations are spoken aloud.
-- [ ] No secret, personal email, private tab, notification, or account menu is
+- [x] The model mode label is visible during at least one run.
+- [x] The evidence digest changes between fixture states.
+- [x] The demo never implies the fixture button repaired real code.
+- [x] Digest and bug-free limitations are spoken aloud.
+- [x] No secret, personal email, private tab, notification, or account menu is
       visible.
-- [ ] Test claims match the recorded commit.
-- [ ] Public app and repository URLs appear in the description.
-- [ ] The uploaded video is public, has audio, and works signed out.
+- [x] Test claims match the source state used for the recording.
+- [x] Public app and repository URLs appear in the description.
+- [x] The uploaded video is public, has audio, and works signed out.
 
 ## YouTube description
 

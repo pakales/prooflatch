@@ -130,9 +130,7 @@ export function createFallbackAnalysis(
     repairSteps: attentionChecks.slice(0, 6).map((check) => ({
       checkId: check.id,
       action: `Resolve the condition reported by “${check.label}” without weakening the gate.`,
-      verify: check.command
-        ? `Run: ${check.command}`
-        : `Re-run check ${check.id} and require a passing result.`,
+      verify: `Regenerate check ${check.id} under ${packet.policy.id}@${packet.policy.version} and require a passing result.`,
     })),
     stopCondition: ready
       ? "Stop if the commit or evidence packet changes; a new receipt is required."

@@ -47,6 +47,7 @@ At minimum, automated tests should cover:
 | Policy or evaluator version changes | Different digest | Receipt is version-bound |
 | Ready fallback | No risks or repair steps | READY invariant |
 | Blocked fallback | Only authoritative blocking IDs | Evidence boundary |
+| Hostile packet `command` text | Absent from Codex instructions | Evidence remains data |
 
 The receipt preserves a full 64-character SHA-256 digest; the UI may show a
 16-character abbreviation. Neither is a signature or evidence-origin check.
@@ -111,16 +112,18 @@ not replace, mocked contract tests.
 
 Production tests should verify:
 
-1. an anonymous visitor can view the public demo but cannot trigger a paid model
-   call;
+1. an anonymous visitor can run both bundled fixtures and receive a complete
+   deterministic assessment, digest, brief, and receipt without a D1 or paid
+   model call;
 2. a valid hosting-injected ChatGPT identity can use the model within quota;
 3. quota records contain only an HMAC pseudonym, never raw email;
 4. repeated calls eventually receive the configured quota response;
 5. quota remains enforced across worker restarts;
 6. missing `PROOFLATCH_QUOTA_SALT` fails closed for paid model use;
 7. unavailable D1 does not silently create unlimited model access;
-8. local development behavior is explicit and cannot be activated in
-   production through a request header.
+8. anonymous localhost requests follow the same deterministic-only spend
+   boundary; the live contract is exercised only with controlled authenticated
+   test identity.
 
 The current policy permits three calls per minute and twenty per day per
 pseudonymous user, with thirty-day record expiry. Tests should still read
@@ -216,22 +219,26 @@ Test at a desktop width and a narrow mobile width.
 
 1. Load `/` with the bundled blocked fixture.
 2. Confirm the first viewport states the product purpose and exposes one primary
-   action.
-3. Run release proof.
-4. Confirm `BLOCKED`, two required blockers, one warning, and a non-pending
+   signed-out action: **Run deterministic proof**.
+3. Confirm the mode label states that guest mode is deterministic-only and
+   creates no paid model call.
+4. Run the deterministic proof.
+5. Confirm `BLOCKED`, two required blockers, one warning, and a non-pending
    digest.
-5. Select each failed check and confirm the inspector explanation stays tied to
+6. Select each failed check and confirm the inspector explanation stays tied to
    that check.
-6. Copy the Codex brief and verify that every step has a known check ID,
+7. Copy the decision receipt and confirm it records deterministic explanation
+   mode with no model identifier.
+8. Copy the Codex brief and verify that every step has a known check ID,
    verification instruction, and stop condition.
-7. Confirm there is no language claiming a repository was modified.
+9. Confirm there is no language claiming a repository was modified.
 
 ### Simulated evidence update
 
 1. Click **Apply demo fix set**.
 2. Confirm the disclosure states that only sample evidence changes.
 3. Confirm the commit changes before re-analysis.
-4. Run release proof again.
+4. Run the deterministic proof again.
 
 ### Ready state
 
@@ -262,26 +269,31 @@ Before recording the contest video:
 - clear unrelated tabs, notifications, identity details, and secrets;
 - preload the blocked fixture;
 - verify the live model path and deterministic fallback label;
+- verify the signed-out deterministic Judge Mode and no-paid-call label;
 - rehearse the 2:50 script with a visible timer;
 - record audible narration and confirm final runtime under three minutes;
 - verify the uploaded public YouTube video from a signed-out window.
 
 See [`DEMO-SCRIPT.md`](DEMO-SCRIPT.md).
 
-## Final evidence record
+## Candidate evidence record
 
-Complete this table from the exact commit and deployment used in the
-submission. Do not pre-fill it from an earlier source state.
+Recorded on 2026-07-19 from the Judge Mode candidate source state. Public-only
+rows remain pending until the exact candidate commit is approved, pushed, and
+deployed.
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
-| Lint | `[PASS/FAIL]` | `[command output or CI URL]` |
-| Type check | `[PASS/FAIL]` | `[command output or CI URL]` |
-| Production build | `[PASS/FAIL]` | `[command output or CI URL]` |
-| Automated tests | `[PASS/FAIL]` | `[count and command output or CI URL]` |
-| Production dependency audit | `[PASS/FAIL]` | `[summary]` |
-| Desktop browser flow | `[PASS/FAIL]` | `[screenshot or QA note]` |
-| Mobile browser flow | `[PASS/FAIL]` | `[screenshot or QA note]` |
-| Live GPT-5.6 smoke | `[PASS/FAIL]` | `[mode/model, no private response ID]` |
-| Anonymous paid-call block | `[PASS/FAIL]` | `[HTTP/UI evidence]` |
-| Deployment | `[PASS/FAIL]` | `[public URL]` |
+| Action bundle parity | PASS | `npm run verify`; generated bundle is current |
+| Lint | PASS | `npm run verify` |
+| Type check | PASS | `npm run verify` |
+| Production build | PASS | `npm run verify`; `/` and `/api/analyze` built |
+| Automated tests | PASS | 52 unit tests and 2 rendered-worker tests |
+| Production dependency audit | PASS | `npm audit --omit=dev`; 0 vulnerabilities |
+| Anonymous spend boundary | PASS | Localhost and production-shaped API tests call neither D1 quota nor OpenAI |
+| Hostile command isolation | PASS | Packet `command` text is absent from generated Codex instructions |
+| Desktop browser flow | PASS | Local production build at 1440×1000; BLOCKED → receipt → fixture swap → READY; digest changed |
+| Mobile browser flow | PASS | Local production build at 390×844; no horizontal overflow and core actions fit the flow |
+| Browser console | PASS | No `error` or `warn` entries during Judge Mode QA |
+| Live GPT-5.6 candidate smoke | PENDING | Run after the exact candidate deployment |
+| Production deployment | PENDING | Requires explicit `push + deploy` approval |

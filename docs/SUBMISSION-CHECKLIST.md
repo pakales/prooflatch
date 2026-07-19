@@ -1,7 +1,18 @@
 # ProofLatch Final Submission Checklist
 
-This is a hard gate. Do not submit while any required item is unchecked or any
-placeholder remains.
+The original Devpost entry is already submitted. This is now the hard gate for
+publishing the Judge Mode candidate; do not push, deploy, or edit the public
+entry while a required candidate item is unchecked.
+
+## Current status — 2026-07-19
+
+| Surface | State | Evidence |
+| --- | --- | --- |
+| Devpost | SUBMITTED | `https://devpost.com/software/prooflatch` |
+| Demo video | PUBLIC | `https://youtu.be/bzU7mK8DqiI` (2:37) |
+| Current live baseline | HEALTHY | `https://prooflatch-buildweek.e-vigelis.chatgpt.site` |
+| Judge Mode candidate | LOCAL PASS | `npm run verify`; desktop/mobile blocked-to-ready QA |
+| Public candidate update | PENDING APPROVAL | Push exact source, deploy same commit, add 60-second Devpost instructions |
 
 ## 1. Product
 
@@ -95,34 +106,36 @@ Attach final evidence to the table in [`TESTING.md`](TESTING.md).
 
 ## 6. Demo video
 
-- [ ] Public YouTube URL is recorded here after the final public upload.
-- [ ] Runtime is 2:50 or shorter.
-- [ ] Audio is clear and continuous.
-- [ ] Both Codex and GPT-5.6 usage are explained.
-- [ ] The blocked-to-ready loop is completed on the public deployment.
-- [ ] Simulated demo fix and digest limitations are spoken aloud.
-- [ ] Test proof, public repository, MIT license, and Codex session ID are
+- [x] Public YouTube URL: `https://youtu.be/bzU7mK8DqiI`.
+- [x] Runtime is 2:37.
+- [x] Audio is clear and continuous.
+- [x] Both Codex and GPT-5.6 usage are explained.
+- [x] The blocked-to-ready loop is completed on the public deployment.
+- [x] Simulated demo fix and digest limitations are spoken aloud.
+- [x] Test proof, public repository, MIT license, and Codex session ID are
       visible.
-- [ ] No secret, email, private tab, notification, or account data appears.
-- [ ] Video and description links work signed out.
+- [x] No secret, email, private tab, notification, or account data appears.
+- [x] Video and description links work signed out.
 
 Use [`DEMO-SCRIPT.md`](DEMO-SCRIPT.md) as the recording source of truth.
 
 ## 7. Devpost entry
 
-- [ ] Track selected: **Developer Tools**.
-- [ ] Project name and tagline match [`SUBMISSION.md`](SUBMISSION.md).
-- [ ] Final description contains only verified behavior.
-- [ ] Live app, repository, video, and license links are correct.
-- [ ] Codex session ID is real and entered in the `/feedback` field:
+- [x] Track selected: **Developer Tools**.
+- [x] Project name and tagline match [`SUBMISSION.md`](SUBMISSION.md).
+- [x] Current public description contains only verified behavior.
+- [x] Live app, repository, video, and license links are correct.
+- [x] Codex session ID is real and entered in the `/feedback` field:
       `019f7221-2421-78e3-b12e-f6082da1ed87`
-- [ ] The same session ID appears in the README/submission copy.
-- [ ] Existing-project question is answered truthfully; this entry's submitted
+- [x] The same session ID appears in the README/submission copy.
+- [x] Existing-project question is answered truthfully; this entry's submitted
       work and event-period implementation are evident in commit history.
-- [ ] Required team, eligibility, terms, and event fields are complete.
-- [ ] Final preview has no Markdown formatting damage or unresolved
+- [x] Required team, eligibility, terms, and event fields are complete.
+- [x] Current public preview has no Markdown formatting damage or unresolved
       placeholders.
-- [ ] Submission confirmation is captured.
+- [x] Submission is confirmed and publicly reachable.
+- [ ] Add the signed-out 60-second Judge Mode instructions after the exact
+      candidate deployment.
 
 ## 8. Placeholder sweep
 

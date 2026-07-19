@@ -1,8 +1,8 @@
 # ProofLatch — Devpost Submission Copy
 
-> Public submission draft for the verified build. The repository and live app
-> links are final; the demo-video and Devpost-submission steps remain explicitly
-> pending until a public recording exists and the final entry is approved.
+> The Devpost entry, repository, live app, and public demo video are live. The
+> signed-out Judge Mode instructions below are the next candidate update and
+> must only replace the public copy after this exact source state is deployed.
 
 ## Core fields
 
@@ -118,8 +118,10 @@ command ran. We expose that limitation in the interface, README, threat model,
 and demo.
 
 The third challenge was offering a public judgeable demo without exposing an
-unbounded paid API. Production uses server-side identity and a persistent
-per-user quota while preserving deterministic fallback behavior.
+unbounded paid API. Signed-out visitors now receive the full deterministic
+decision, digest, brief, and receipt before any D1 or model code can run.
+Optional GPT-5.6 explanations still require server-side identity and a
+persistent per-user quota.
 
 ### Accomplishments
 
@@ -128,6 +130,7 @@ per-user quota while preserving deterministic fallback behavior.
   checks.
 - A read-only repository baseline scanner with bounded Git metadata inspection.
 - A deterministic verdict that remains authoritative when GPT is unavailable.
+- A signed-out 60-second judge path with no paid model call.
 - Strict evidence and structured-output contracts.
 - Bounded Codex repair briefs linked to exact check IDs.
 - Reproducible evidence receipts tied to commit, policy version, and packet.
@@ -158,25 +161,28 @@ Honest boundaries make the receipt more useful, not less.
 No repository access or source upload is required.
 
 1. Open `https://prooflatch-buildweek.e-vigelis.chatgpt.site`.
-2. Sign in with ChatGPT when prompted to enable live GPT-5.6 analysis.
-3. Click **Run release proof** on the bundled Atlas Checkout fixture.
-4. Inspect the `BLOCKED` verdict and failed checks.
-5. Copy the Codex repair brief.
+2. Stay signed out and confirm **Guest mode · deterministic only · no paid
+   model call**.
+3. Click **Run deterministic proof** on the bundled Atlas Checkout fixture.
+4. Inspect the `BLOCKED` verdict, failed checks, digest, and decision receipt.
+5. Copy the bounded Codex repair brief.
 6. Click **Apply demo fix set**. This simulates updated sample evidence only; it
    does not modify a repository.
-7. Run the proof again and confirm `READY`.
-8. Copy the receipt and compare its commit and digest with the blocked run.
-9. Optionally import the JSON fixtures from the public repository.
+7. Click **Re-run deterministic proof** and confirm `READY`.
+8. Copy the new receipt and compare its commit and digest with the blocked run.
+9. Optionally choose **Sign in for GPT-5.6** for an evidence-bound model
+   explanation, or import the JSON fixtures from the public repository.
 
-If the model quota or API is unavailable, the deterministic gate still works
-and the UI explicitly labels fallback mode.
+The complete signed-out loop takes about 60 seconds. If the authenticated model
+quota or API is unavailable, the deterministic verdict still works and the UI
+explicitly labels fallback mode.
 
 ## Links
 
 - **Live app:** `https://prooflatch-buildweek.e-vigelis.chatgpt.site`
 - **Public repository:** `https://github.com/pakales/prooflatch`
-- **Public YouTube demo:** Pending final public recording; do not submit the
-  Devpost entry until this link exists.
+- **Public YouTube demo:** `https://youtu.be/bzU7mK8DqiI`
+- **Devpost entry:** `https://devpost.com/software/prooflatch`
 - **Codex session ID:** `019f7221-2421-78e3-b12e-f6082da1ed87`
 - **License:** `https://github.com/pakales/prooflatch/blob/main/LICENSE`
 

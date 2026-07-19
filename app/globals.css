@@ -377,6 +377,14 @@ code {
   text-align: center;
 }
 
+.guest-support {
+  margin: -2px 0 0;
+  color: var(--ink-muted);
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .demo-disclosure {
   margin: 2px 0 0;
   color: var(--ink-muted);
@@ -417,11 +425,24 @@ code {
 }
 
 .metric-strip .metric-hash {
-  overflow: hidden;
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 11px;
+}
+
+.metric-hash > span {
+  display: block;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.digest-change {
+  display: block;
+  margin-top: 3px;
+  color: var(--passed-fg);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 650;
 }
 
 .error-banner {
@@ -716,6 +737,12 @@ code {
   margin: 2px 18px 18px;
 }
 
+.inspector-actions {
+  display: grid;
+  gap: 6px;
+  margin: 2px 18px 18px;
+}
+
 .receipt-panel {
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr);
@@ -915,6 +942,7 @@ code {
   }
 
   .evidence-inspector > .button-full,
+  .inspector-actions,
   .receipt-panel {
     width: calc(100% - 28px);
     margin-inline: 14px;

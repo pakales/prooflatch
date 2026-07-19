@@ -72,6 +72,8 @@ designed to override the model prompt.
 
 - strict schemas and field length bounds;
 - explicit instruction that the packet is untrusted data;
+- packet-provided command labels remain display-only and are never converted
+  into Codex execution instructions;
 - deterministic verdict computed before the model call;
 - no verdict field in the model output schema;
 - no model tools, shell, file, browser, or network capabilities;
@@ -140,6 +142,8 @@ model usage.
 
 **Controls:**
 
+- anonymous requests in every environment return the validated deterministic
+  assessment before D1 quota or OpenAI client code can execute;
 - server-side Sign in with ChatGPT identity in production;
 - persistent D1 per-user quota before the model call;
 - HMAC-pseudonymized identity keys;
@@ -155,6 +159,9 @@ thirty days.
 races, and denial-of-service remain possible. Quotas are a spend control, not a
 complete abuse-prevention system. Production should also use platform
 observability, spend alerts, and WAF/rate controls where available.
+Anonymous deterministic requests still consume bounded schema-validation and
+hashing work, so platform-level traffic controls remain relevant even though
+they cannot create model spend.
 
 ### Identity spoofing
 
@@ -165,7 +172,8 @@ observability, spend alerts, and WAF/rate controls where available.
 
 - identity is read server-side through hosting dispatch;
 - production must not trust a development header bypass;
-- paid model use fails closed when identity is absent.
+- paid model use fails closed when identity is absent, while the guest receives
+  only the deterministic result.
 
 **Residual risk:** Sign in with ChatGPT establishes identity, not organization
 membership or authorization to private project data. If workspace restrictions
@@ -217,7 +225,9 @@ route.
 - per-user quota limits impact even if another control fails.
 
 **Residual risk:** requests without an `Origin` header are possible outside a
-browser. Authentication and quota, not origin alone, protect paid usage.
+browser. Authentication and quota, not origin alone, protect paid usage;
+bounded request handling and platform controls protect the public
+deterministic path.
 
 ### Supply-chain and runtime compromise
 

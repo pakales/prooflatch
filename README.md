@@ -37,17 +37,19 @@ release state.
 2. **Latch the verdict** — deterministic rules return `BLOCKED` when any
    policy-required check is not `pass` or the working tree is dirty; otherwise
    they return `READY`.
-3. **Explain the decision** — GPT-5.6 Sol receives the authoritative verdict and
-   structured evidence. It returns a schema-validated explanation and a bounded
-   repair brief tied only to blocking policy gates.
+3. **Explain the decision** — public guest mode returns a deterministic
+   explanation, receipt, and bounded repair brief without a paid model call.
+   An authenticated GPT-5.6 Sol path can add a schema-validated explanation
+   tied only to blocking policy gates.
 4. **Repair with Codex** — copy the repair brief into Codex. Every step is tied
    to a blocking check ID and includes a verification condition.
 5. **Re-run with new evidence** — a changed commit or evidence packet requires a
    new evaluation and a new receipt.
 
-If the OpenAI API is unavailable, ProofLatch preserves the deterministic
-decision and returns a transparent deterministic explanation instead of
-pretending a model response succeeded.
+The public judge path does not require sign-in. If the authenticated model path
+is unavailable, ProofLatch preserves the deterministic decision and returns a
+transparent deterministic explanation instead of pretending a model response
+succeeded.
 
 ## Honest boundaries
 
@@ -69,8 +71,8 @@ pretending a model response succeeded.
 
 - Node.js `>=22.13.0`
 - npm
-- An OpenAI API key for live GPT-5.6 explanations (optional for deterministic
-  local operation)
+- An OpenAI API key for authenticated GPT-5.6 explanations (optional for
+  deterministic local operation)
 
 ### Install and run
 
@@ -82,25 +84,32 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-For live explanations, fill the server-only value in the copied `.env.local`:
+For the authenticated model path, fill the server-only value in the copied
+`.env.local`:
 
 ```dotenv
 OPENAI_API_KEY=your_server_side_key
 ```
 
 Never prefix this variable with `NEXT_PUBLIC_` and never commit `.env.local`.
-Without the key, the API intentionally responds in `deterministic-fallback`
-mode.
+The signed-out local UI remains deterministic-only even when the key exists;
+an API key alone never enables anonymous model spend. Live model testing
+requires a trusted hosting identity or the controlled authenticated test
+harness. Without the key, an authenticated request intentionally responds in
+`deterministic-fallback` mode.
 
-### Try the complete demo loop
+### Test the public demo in 60 seconds
 
-1. Click **Run release proof** on the bundled blocked fixture.
-2. Inspect the failed test and dependency audit evidence.
-3. Copy the bounded Codex repair brief.
-4. Click **Apply demo fix set**. This is a clearly labeled fixture swap, not a
+1. Open the live app signed out and click **Run deterministic proof**.
+2. Confirm `BLOCKED`, inspect the failed test and dependency audit, and copy the
+   decision receipt or bounded Codex repair brief.
+3. Click **Apply demo fix set**. This is a clearly labeled fixture swap, not a
    real code repair.
-5. Click **Run release proof** again.
-6. Confirm `READY`, then copy the receipt.
+4. Click **Re-run deterministic proof**.
+5. Confirm `READY`, zero blockers, and a digest that differs from the blocked
+   run, then copy the new receipt.
+6. Optionally choose **Sign in for GPT-5.6** to add an evidence-bound model
+   explanation. Sign-in never changes the deterministic verdict.
 
 You can also choose **Import evidence** and paste either:
 
@@ -284,8 +293,10 @@ step; a `READY` response must contain neither.
 
 ## Production configuration
 
-Production uses server-side Sign in with ChatGPT identity and a persistent D1
-quota before any paid model call. Configure:
+Production exposes the deterministic evaluator as a signed-out guest path.
+Guest requests return after validation and evaluation, before D1 quota access
+or any paid model call. The optional GPT-5.6 path uses server-side Sign in with
+ChatGPT identity and a persistent D1 quota before model execution. Configure:
 
 | Setting | Kind | Purpose |
 | --- | --- | --- |

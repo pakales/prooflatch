@@ -70,9 +70,11 @@ timestamp authority.
 | `required` | boolean | Must exactly match the selected policy |
 | `durationMs` | integer, optional | 0–3,600,000 |
 
-The `command` field is displayed and may be repeated in a Codex repair brief.
-The web evaluator never executes it. The separate baseline scanner runs only
-its own fixed Git commands; it never executes a packet-provided command.
+The `command` field is displayed only as descriptive evidence provenance. It is
+never executed and never repeated as an imperative in a Codex repair brief.
+Deterministic repair verification uses a policy-owned instruction to regenerate
+the named check. The separate baseline scanner runs only its own fixed Git
+commands; it never executes a packet-provided command.
 
 ## GitHub Action producer
 
