@@ -237,8 +237,16 @@ test("rejects cross-origin requests before reading trust-bearing input", async (
   assert.equal(state.openaiCalls.length, 0);
 });
 
-test("requires server-provided identity outside localhost", async () => {
-  const { response, body } = await responseJson(
+test("anonymous requests get deterministic proof without paid services", async () => {
+  const local = await responseJson(await POST(request()));
+
+  assert.equal(local.response.status, 200);
+  assert.equal(local.body.mode, "deterministic-fallback");
+  assert.equal(local.body.assessment.verdict, "BLOCKED");
+  assert.equal(state.quotaCalls.length, 0);
+  assert.equal(state.openaiCalls.length, 0);
+
+  const blocked = await responseJson(
     await POST(
       request({
         url: "https://prooflatch.example/api/analyze",
@@ -247,8 +255,37 @@ test("requires server-provided identity outside localhost", async () => {
     ),
   );
 
-  assert.equal(response.status, 401);
-  assert.equal(body.error, "Sign in with ChatGPT to run live analysis.");
+  assert.equal(blocked.response.status, 200);
+  assert.equal(blocked.body.mode, "deterministic-fallback");
+  assert.equal(blocked.body.model, null);
+  assert.equal(blocked.body.assessment.verdict, "BLOCKED");
+  assert.match(blocked.body.assessment.proofHash, /^[a-f0-9]{64}$/);
+  assert.ok(blocked.body.analysis.topRisks.length > 0);
+  assert.ok(blocked.body.analysis.repairSteps.length > 0);
+  assert.equal(state.quotaCalls.length, 0);
+  assert.equal(state.openaiCalls.length, 0);
+
+  const ready = await responseJson(
+    await POST(
+      request({
+        url: "https://prooflatch.example/api/analyze",
+        body: JSON.stringify(fixedSample),
+        headers: { origin: "https://prooflatch.example" },
+      }),
+    ),
+  );
+
+  assert.equal(ready.response.status, 200);
+  assert.equal(ready.body.mode, "deterministic-fallback");
+  assert.equal(ready.body.model, null);
+  assert.equal(ready.body.assessment.verdict, "READY");
+  assert.match(ready.body.assessment.proofHash, /^[a-f0-9]{64}$/);
+  assert.notEqual(
+    ready.body.assessment.proofHash,
+    blocked.body.assessment.proofHash,
+  );
+  assert.deepEqual(ready.body.analysis.topRisks, []);
+  assert.deepEqual(ready.body.analysis.repairSteps, []);
   assert.equal(state.quotaCalls.length, 0);
   assert.equal(state.openaiCalls.length, 0);
 });
@@ -382,7 +419,13 @@ test("a semantic model mismatch fails soft without changing BLOCKED", async () =
   };
 
   const { response, body } = await responseJson(
-    await POST(request()),
+    await POST(
+      request({
+        headers: {
+          "oai-authenticated-user-email": "developer@example.invalid",
+        },
+      }),
+    ),
   );
 
   assert.equal(response.status, 200);
@@ -398,7 +441,14 @@ test("GPT cannot add blockers or repair steps to a READY verdict", async () => {
   state.analysis = validBlockedAnalysis();
 
   const { response, body } = await responseJson(
-    await POST(request({ body: JSON.stringify(fixedSample) })),
+    await POST(
+      request({
+        body: JSON.stringify(fixedSample),
+        headers: {
+          "oai-authenticated-user-email": "developer@example.invalid",
+        },
+      }),
+    ),
   );
 
   assert.equal(response.status, 200);

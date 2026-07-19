@@ -30,8 +30,12 @@ test("server-renders the ProofLatch release desk", async () => {
   const html = await response.text();
   assert.match(html, /<title>ProofLatch — Evidence before release<\/title>/i);
   assert.match(html, /ProofLatch/);
-  assert.match(html, /Sign in to run live analysis/);
+  assert.match(html, /Run deterministic proof/);
+  assert.match(html, /Guest judge mode/);
+  assert.match(html, /Guest mode · deterministic only · no paid model call/);
+  assert.match(html, /Sign in for GPT‑5\.6/);
   assert.match(html, /\/signin-with-chatgpt\?return_to=%2F/);
+  assert.doesNotMatch(html, /Sign in to run live analysis/);
   assert.match(html, /Rules decide/);
   assert.match(html, /GPT‑5\.6 explains/);
   assert.match(html, /Required evidence/);

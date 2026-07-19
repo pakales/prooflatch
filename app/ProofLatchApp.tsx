@@ -70,6 +70,9 @@ export function ProofLatchApp({
   const [importValue, setImportValue] = useState("");
   const [copyState, setCopyState] = useState<string | null>(null);
   const [demoFixLoaded, setDemoFixLoaded] = useState(false);
+  const [previousProofHash, setPreviousProofHash] = useState<string | null>(
+    null,
+  );
 
   const selectedCheck =
     packet.checks.find((check) => check.id === selectedCheckId) ??
@@ -140,6 +143,7 @@ export function ProofLatchApp({
   }
 
   function applyDemoFixSet() {
+    setPreviousProofHash(response?.assessment.proofHash ?? null);
     setPacket(fixedSample);
     setResponse(null);
     setError(null);
@@ -152,6 +156,7 @@ export function ProofLatchApp({
     setResponse(null);
     setError(null);
     setDemoFixLoaded(false);
+    setPreviousProofHash(null);
     setSelectedCheckId("unit-suite");
   }
 
@@ -177,6 +182,7 @@ export function ProofLatchApp({
     setPacket(parsed.data);
     setResponse(null);
     setDemoFixLoaded(false);
+    setPreviousProofHash(null);
     setSelectedCheckId(parsed.data.checks[0].id);
     setImportValue("");
     setImportOpen(false);
@@ -196,12 +202,27 @@ export function ProofLatchApp({
   const verdict = response?.assessment.verdict ?? null;
   const isBlocked = verdict === "BLOCKED";
   const isReady = verdict === "READY";
+  const isGuestMode = !user;
+  const proofHashChanged =
+    previousProofHash !== null &&
+    response !== null &&
+    previousProofHash !== response.assessment.proofHash;
   const modelLabel =
     response?.mode === "gpt-5.6-live"
       ? `${response.model ?? "gpt-5.6-sol"} · live`
       : response
-        ? "Deterministic fallback"
-        : "GPT-5.6 Sol ready";
+        ? isGuestMode
+          ? "Guest mode · deterministic only · no paid model call"
+          : "Deterministic fallback"
+        : isGuestMode
+          ? "Guest mode · deterministic only · no paid model call"
+          : "GPT-5.6 Sol ready";
+  const impactLabel =
+    response?.mode === "gpt-5.6-live"
+      ? "GPT‑5.6 impact"
+      : isGuestMode
+        ? "Deterministic impact"
+        : "Deterministic fallback";
 
   return (
     <main className="app-shell">
@@ -220,7 +241,9 @@ export function ProofLatchApp({
         </div>
 
         <div className="header-actions">
-          <span className="user-label">{user?.displayName ?? "Public demo"}</span>
+          <span className="user-label">
+            {user?.displayName ?? "Guest judge mode"}
+          </span>
           <button
             className="button button-quiet"
             type="button"
@@ -303,24 +326,22 @@ export function ProofLatchApp({
           </div>
 
           <div className="decision-actions">
-            {!user && process.env.NODE_ENV === "production" ? (
-              <a className="button button-primary button-large" href={signInPath}>
-                Sign in to run live analysis
-              </a>
-            ) : (
-              <button
-                className="button button-primary button-large"
-                type="button"
-                onClick={analyze}
-                disabled={phase === "analyzing"}
-              >
-                {phase === "analyzing"
-                  ? "Verifying…"
+            <button
+              className="button button-primary button-large"
+              type="button"
+              onClick={analyze}
+              disabled={phase === "analyzing"}
+            >
+              {phase === "analyzing"
+                ? "Verifying…"
+                : demoFixLoaded && isGuestMode
+                  ? "Re-run deterministic proof"
                   : response
-                    ? "Run again"
-                    : "Run release proof"}
-              </button>
-            )}
+                    ? "Run proof again"
+                    : isGuestMode
+                      ? "Run deterministic proof"
+                      : "Run release proof"}
+            </button>
 
             {isBlocked ? (
               <button
@@ -348,8 +369,20 @@ export function ProofLatchApp({
               </button>
             ) : null}
 
+            {!user ? (
+              <a className="button button-quiet guest-sign-in" href={signInPath}>
+                Sign in for GPT‑5.6
+              </a>
+            ) : null}
+
             <p className="model-state">{modelLabel}</p>
-            {isBlocked ? (
+            {isGuestMode ? (
+              <p className="guest-support">
+                Optional AI explanation. Verdict and receipt stay
+                deterministic.
+              </p>
+            ) : null}
+            {isBlocked || demoFixLoaded ? (
               <p className="demo-disclosure">
                 Demo fix only updates the sample evidence packet. It does not
                 modify a repository.
@@ -377,7 +410,14 @@ export function ProofLatchApp({
             <div>
               <dt>Evidence digest</dt>
               <dd className="metric-hash">
-                {response?.assessment.proofHash.slice(0, 16) ?? "pending"}
+                <span>
+                  {response?.assessment.proofHash.slice(0, 16) ?? "pending"}
+                </span>
+                {proofHashChanged ? (
+                  <small className="digest-change">
+                    Changed from {previousProofHash.slice(0, 8)}
+                  </small>
+                ) : null}
               </dd>
             </div>
           </dl>
@@ -470,7 +510,7 @@ export function ProofLatchApp({
 
             {selectedRisk ? (
               <div className="inspector-callout callout-risk">
-                <p className="eyebrow">GPT‑5.6 impact</p>
+                <p className="eyebrow">{impactLabel}</p>
                 <strong>{selectedRisk.title}</strong>
                 <p>{selectedRisk.impact}</p>
               </div>
@@ -485,15 +525,26 @@ export function ProofLatchApp({
             ) : null}
 
             {isBlocked && response ? (
-              <button
-                className="button button-secondary button-full"
-                type="button"
-                onClick={() => handleCopy("brief")}
-              >
-                {copyState === "brief"
-                  ? "Codex brief copied"
-                  : "Copy Codex repair brief"}
-              </button>
+              <div className="inspector-actions">
+                <button
+                  className="button button-secondary button-full"
+                  type="button"
+                  onClick={() => handleCopy("brief")}
+                >
+                  {copyState === "brief"
+                    ? "Codex brief copied"
+                    : "Copy Codex repair brief"}
+                </button>
+                <button
+                  className="button button-quiet button-full"
+                  type="button"
+                  onClick={() => handleCopy("receipt")}
+                >
+                  {copyState === "receipt"
+                    ? "Decision receipt copied"
+                    : "Copy decision receipt"}
+                </button>
+              </div>
             ) : null}
 
             {isReady && response ? (

@@ -37,20 +37,6 @@ function sameOrigin(request: Request): boolean {
   }
 }
 
-function isLocalRequest(request: Request): boolean {
-  try {
-    const { hostname } = new URL(request.url);
-    return (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "[::1]" ||
-      hostname === "::1"
-    );
-  } catch {
-    return false;
-  }
-}
-
 type BodyReadResult =
   | { ok: true; value: unknown }
   | { ok: false; status: 400 | 413; error: string };
@@ -216,14 +202,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const localRequest = isLocalRequest(request);
   const user = await getChatGPTUser(request.headers);
-  if (!localRequest && !user) {
-    return NextResponse.json(
-      { error: "Sign in with ChatGPT to run live analysis." },
-      { status: 401, headers: responseHeaders() },
-    );
-  }
 
   const body = await readBoundedJsonBody(request, MAX_BODY_BYTES);
   if (!body.ok) {
@@ -264,44 +243,40 @@ export async function POST(request: Request) {
       { headers: responseHeaders() },
     );
 
+  if (!user) {
+    return deterministicResponse();
+  }
+
   if (!apiKey) {
     return deterministicResponse();
   }
 
-  let safetyIdentifier: string | undefined;
-  if (user) {
-    const quotaSalt = process.env.PROOFLATCH_QUOTA_SALT;
-    if (!quotaSalt) return deterministicResponse();
+  const quotaSalt = process.env.PROOFLATCH_QUOTA_SALT;
+  if (!quotaSalt) return deterministicResponse();
 
-    try {
-      const quota = await consumeAiQuota({
-        email: user.email,
-        secretSalt: quotaSalt,
-      });
-      if (!quota.allowed) {
-        return NextResponse.json(
-          { error: "Live analysis limit reached. Try again later." },
-          {
-            status: 429,
-            headers: {
-              ...responseHeaders(),
-              "Retry-After": String(quota.retryAfterSeconds),
-            },
+  let safetyIdentifier: string;
+  try {
+    const quota = await consumeAiQuota({
+      email: user.email,
+      secretSalt: quotaSalt,
+    });
+    if (!quota.allowed) {
+      return NextResponse.json(
+        { error: "Live analysis limit reached. Try again later." },
+        {
+          status: 429,
+          headers: {
+            ...responseHeaders(),
+            "Retry-After": String(quota.retryAfterSeconds),
           },
-        );
-      }
-      safetyIdentifier = quota.safetyIdentifier;
-    } catch {
-      // Never call a paid model when the persistent abuse barrier is
-      // unavailable. The deterministic assessment remains useful and safe.
-      return deterministicResponse();
+        },
+      );
     }
-  } else if (!localRequest) {
-    // Defensive duplicate of the earlier identity boundary.
-    return NextResponse.json(
-      { error: "Sign in with ChatGPT to run live analysis." },
-      { status: 401, headers: responseHeaders() },
-    );
+    safetyIdentifier = quota.safetyIdentifier;
+  } catch {
+    // Never call a paid model when the persistent abuse barrier is
+    // unavailable. The deterministic assessment remains useful and safe.
+    return deterministicResponse();
   }
 
   try {

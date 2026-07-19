@@ -31,20 +31,25 @@ sequenceDiagram
     API->>API: Origin, type, size, Zod, and policy validation
     API->>Gate: assessEvidence(packet)
     Gate-->>API: verdict, counts, blockers, warnings, digest
-    API->>Quota: Verify identity and consume model quota
-    alt Model call is permitted
-        API->>GPT: Authoritative verdict + untrusted evidence
-        GPT-->>API: Structured explanation and repair plan
-        API->>API: Validate schema and referenced check IDs
-    else Key, identity, quota, or model unavailable
-        API->>API: Build deterministic fallback explanation
+    alt Anonymous visitor in any environment
+        API->>API: Build deterministic explanation
+    else Authenticated model path
+        API->>Quota: Consume persistent per-user model quota
+        alt Model call is permitted
+            API->>GPT: Authoritative verdict + untrusted evidence
+            GPT-->>API: Structured explanation and repair plan
+            API->>API: Validate schema and referenced check IDs
+        else Key, quota, or model unavailable
+            API->>API: Build deterministic fallback explanation
+        end
     end
     API-->>UI: Assessment + explanation mode + versions
     UI-->>User: Decision, bounded brief, and receipt
 ```
 
-Production identity and quota protect the paid model path. The deterministic
-evaluation itself remains available as a safe fallback.
+Production identity and quota protect only the paid model path. The
+deterministic evaluation is the default signed-out judge path as well as the
+safe fallback when an authenticated model call cannot complete.
 
 ## Components
 
@@ -125,14 +130,19 @@ boundary. Its responsibilities are:
 1. reject cross-origin, unsupported, compressed, oversized, malformed, or
    schema-invalid input;
 2. run the deterministic evaluator first;
-3. protect production model spend with server-side ChatGPT identity and a D1
-   per-user quota;
-4. call the OpenAI Responses API with `gpt-5.6-sol`, structured output,
+3. return the complete deterministic assessment, explanation, and digest to
+   any anonymous visitor before quota or model code can run;
+4. protect optional production model spend with server-side ChatGPT identity
+   and a D1 per-user quota;
+5. call the OpenAI Responses API with `gpt-5.6-sol`, structured output,
    `store: false`, zero automatic retries, and a bounded timeout;
-5. reject model output that violates the evidence boundary;
-6. return a deterministic fallback if the model path cannot complete.
+6. reject model output that violates the evidence boundary;
+7. return a deterministic fallback if the authenticated model path cannot
+   complete.
 
-The model output schema deliberately has no verdict field.
+The model output schema deliberately has no verdict field. Packet-provided
+command labels remain display-only; deterministic Codex briefs replace them
+with a policy-owned instruction to regenerate the named check.
 
 ### User interface
 
@@ -143,7 +153,7 @@ decision desk:
 - a dominant release decision;
 - required proof, blocker, warning, and digest metrics;
 - ordered evidence checks and a focused inspector;
-- a copyable Codex repair brief when blocked;
+- a copyable Codex repair brief and decision receipt when blocked;
 - a copyable receipt when ready;
 - a plainly disclosed blocked-to-ready fixture demonstration.
 
@@ -274,7 +284,7 @@ deployment authorization, attestation, or audit certificate.
 | --- | --- |
 | Invalid JSON or schema | Request rejected; no verdict or model call |
 | Oversized or wrong content type | Request rejected; no model call |
-| Anonymous production request | No paid model call; sign-in required |
+| Anonymous request in any environment | Complete deterministic result and receipt; no D1 or paid model call |
 | Quota exhausted/unavailable | Deterministic result or explicit rate response |
 | Missing API key | Deterministic fallback |
 | OpenAI timeout/error | Deterministic fallback |
