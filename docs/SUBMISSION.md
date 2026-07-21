@@ -181,7 +181,7 @@ explicitly labels fallback mode.
 
 - **Live app:** `https://prooflatch-buildweek.e-vigelis.chatgpt.site`
 - **Public repository:** `https://github.com/pakales/prooflatch`
-- **Public YouTube demo:** `https://youtu.be/bzU7mK8DqiI`
+- **Public YouTube demo:** `https://youtu.be/zGwFgef_Cbg`
 - **Devpost entry:** `https://devpost.com/software/prooflatch`
 - **Codex session ID:** `019f7221-2421-78e3-b12e-f6082da1ed87`
 - **License:** `https://github.com/pakales/prooflatch/blob/main/LICENSE`
