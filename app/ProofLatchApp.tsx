@@ -228,9 +228,7 @@ export function ProofLatchApp({
     <main className="app-shell">
       <header className="app-bar">
         <div className="brand-lockup">
-          <span className="brand-mark" aria-hidden="true">
-            PL
-          </span>
+          <span className="brand-mark" aria-hidden="true" />
           <span className="brand-name">ProofLatch</span>
         </div>
 
@@ -241,6 +239,16 @@ export function ProofLatchApp({
         </div>
 
         <div className="header-actions">
+          <a
+            className="publisher-link"
+            href="https://ev1labs.com/labs/build-week-2026/"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="An EV1 Labs build — Build Week 2026 collection"
+          >
+            <span className="publisher-mark" aria-hidden="true" />
+            <span>AN EV1 LABS BUILD</span>
+          </a>
           <span className="user-label">
             {user?.displayName ?? "Guest judge mode"}
           </span>
@@ -305,7 +313,7 @@ export function ProofLatchApp({
                   ? `Release ${verdict.toLowerCase()}`
                   : demoFixLoaded
                     ? "Updated evidence loaded"
-                    : "Release decision desk"}
+                    : "Evidence before release"}
             </p>
             <h1>
               {phase === "analyzing"

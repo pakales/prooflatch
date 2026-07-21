@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 async function render(pathname = "/") {
@@ -40,12 +42,27 @@ test("server-renders the ProofLatch release desk", async () => {
   assert.match(html, /GPT‑5\.6 explains/);
   assert.match(html, /Required evidence/);
   assert.match(html, /aria-label="EV1 Labs project links"/);
+  assert.match(
+    html,
+    /aria-label="An EV1 Labs build — Build Week 2026 collection"/,
+  );
+  assert.equal((html.match(/AN EV1 LABS BUILD/g) ?? []).length, 1);
   assert.match(html, /href="https:\/\/ev1labs\.com\/"/);
   assert.match(
     html,
     /href="https:\/\/ev1labs\.com\/labs\/build-week-2026\/"/,
   );
   assert.doesNotMatch(html, /OPENAI_API_KEY|PROOFLATCH_QUOTA_SALT/);
+});
+
+test("uses the canonical EV1 Labs publisher mark", async () => {
+  const mark = await readFile(
+    new URL("../public/ev1-mark.svg", import.meta.url),
+  );
+  assert.equal(
+    createHash("sha256").update(mark).digest("hex"),
+    "d1074b27463fb95e6ccfe07e1e7cba65528a08fe6e1af79919427bdd81b41032",
+  );
 });
 
 test("unknown routes do not render the release desk", async () => {
