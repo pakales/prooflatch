@@ -9,7 +9,7 @@ entry while a required candidate item is unchecked.
 | Surface | State | Evidence |
 | --- | --- | --- |
 | Devpost | SUBMITTED | `https://devpost.com/software/prooflatch` |
-| Demo video | PUBLIC | `https://youtu.be/bzU7mK8DqiI` (2:37) |
+| Demo video | PUBLIC | `https://youtu.be/zGwFgef_Cbg` (2:37) |
 | Current live baseline | HEALTHY | `https://prooflatch-buildweek.e-vigelis.chatgpt.site` |
 | Judge Mode candidate | LOCAL PASS | `npm run verify`; desktop/mobile blocked-to-ready QA |
 | Public candidate update | PENDING APPROVAL | Push exact source, deploy same commit, add 60-second Devpost instructions |
@@ -106,7 +106,7 @@ Attach final evidence to the table in [`TESTING.md`](TESTING.md).
 
 ## 6. Demo video
 
-- [x] Public YouTube URL: `https://youtu.be/bzU7mK8DqiI`.
+- [x] Public YouTube URL: `https://youtu.be/zGwFgef_Cbg`.
 - [x] Runtime is 2:37.
 - [x] Audio is clear and continuous.
 - [x] Both Codex and GPT-5.6 usage are explained.

@@ -2,7 +2,7 @@
 
 ## Published video record
 
-- **Public URL:** `https://youtu.be/bzU7mK8DqiI`
+- **Public URL:** `https://youtu.be/zGwFgef_Cbg`
 - **Final runtime:** 2:37
 - **Visibility:** Public
 - **Channel:** EV1 Labs
