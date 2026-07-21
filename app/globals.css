@@ -796,9 +796,35 @@ code {
   margin: 0;
 }
 
-.product-footer span {
+.product-footer-meta {
+  display: grid;
   flex: none;
+  gap: 4px;
+  justify-items: end;
   font-family: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+.product-attribution {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.product-attribution a {
+  color: var(--ink-secondary);
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.product-attribution a:hover,
+.product-attribution a:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.product-attribution > span {
+  opacity: 0.55;
 }
 
 @media (max-width: 1023px) {
@@ -950,6 +976,15 @@ code {
 
   .product-footer {
     display: grid;
+  }
+
+  .product-footer-meta {
+    justify-items: start;
+  }
+
+  .product-attribution {
+    flex-wrap: wrap;
+    white-space: normal;
   }
 }
 

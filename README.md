@@ -15,6 +15,9 @@ ProofLatch is an OpenAI Build Week entry in the **Developer Tools** track.
 - **Live app:** [prooflatch-buildweek.e-vigelis.chatgpt.site](https://prooflatch-buildweek.e-vigelis.chatgpt.site)
 - **Source:** [github.com/pakales/prooflatch](https://github.com/pakales/prooflatch)
 
+An [EV1 Labs](https://ev1labs.com/) Build Week project ·
+[Explore the 2026 collection](https://ev1labs.com/labs/build-week-2026/)
+
 ## Why this exists
 
 Agentic coding makes it easy to produce changes quickly, but “the agent says it

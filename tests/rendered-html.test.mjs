@@ -39,6 +39,12 @@ test("server-renders the ProofLatch release desk", async () => {
   assert.match(html, /Rules decide/);
   assert.match(html, /GPT‑5\.6 explains/);
   assert.match(html, /Required evidence/);
+  assert.match(html, /aria-label="EV1 Labs project links"/);
+  assert.match(html, /href="https:\/\/ev1labs\.com\/"/);
+  assert.match(
+    html,
+    /href="https:\/\/ev1labs\.com\/labs\/build-week-2026\/"/,
+  );
   assert.doesNotMatch(html, /OPENAI_API_KEY|PROOFLATCH_QUOTA_SALT/);
 });
 
