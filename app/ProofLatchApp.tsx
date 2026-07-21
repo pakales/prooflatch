@@ -570,7 +570,29 @@ export function ProofLatchApp({
             checked, under which policy, and why the current evidence passed or
             failed.
           </p>
-          <span>Built with Codex + GPT‑5.6 Sol</span>
+          <div className="product-footer-meta">
+            <span>Built with Codex + GPT‑5.6 Sol</span>
+            <nav
+              className="product-attribution"
+              aria-label="EV1 Labs project links"
+            >
+              <a
+                href="https://ev1labs.com/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                EV1 Labs
+              </a>
+              <span aria-hidden="true">·</span>
+              <a
+                href="https://ev1labs.com/labs/build-week-2026/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Build Week 2026
+              </a>
+            </nav>
+          </div>
         </footer>
       </div>
     </main>

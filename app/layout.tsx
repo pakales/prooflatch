@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   description:
     "A deterministic release gate for agent-written code, with GPT-5.6 explanations and Codex-ready repair briefs.",
   applicationName: "ProofLatch",
+  authors: [{ name: "EV1 Labs", url: "https://ev1labs.com/" }],
+  creator: "EV1 Labs",
+  publisher: "EV1 Labs",
   alternates: {
     canonical: "/",
   },
