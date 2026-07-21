@@ -79,6 +79,9 @@
     "@esbuild-kit/core-utils": {
       "esbuild": "0.25.12"
     },
+    "next": {
+      "sharp": "0.35.3"
+    },
     "postcss": "8.5.14",
     "ws": "8.21.0"
   },
