@@ -47,14 +47,14 @@
   "dependencies": {
     "@actions/core": "3.0.1",
     "drizzle-orm": "0.45.2",
-    "next": "16.2.6",
+    "next": "16.3.4",
     "openai": "^6.48.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.45.1",
+    "@cloudflare/vite-plugin": "^1.54.7",
     "@cloudflare/workers-types": "^5.20260718.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
@@ -73,7 +73,7 @@
     "typescript": "5.9.3",
     "vinext": "0.0.50",
     "vite": "^8.1.5",
-    "wrangler": "^4.112.0"
+    "wrangler": "^4.131.0"
   },
   "overrides": {
     "@esbuild-kit/core-utils": {
